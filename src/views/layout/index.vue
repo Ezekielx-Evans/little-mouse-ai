@@ -20,10 +20,11 @@
                         <!-- default-active：默认激活菜单的 index -->
                         <el-menu
                             class="custom-menu"
-                            default-active="1"
+                            default-active="/"
+                            :router="true"
                         >
                             <!-- 首页 -->
-                            <el-menu-item index="1">
+                            <el-menu-item index="/">
                                 <svg class="icon" height="200" p-id="24858" t="1759224577016"
                                      version="1.1" viewBox="0 0 1024 1024" width="200"
                                      xmlns="http://www.w3.org/2000/svg">
@@ -35,7 +36,7 @@
                             </el-menu-item>
 
                             <!-- 请求记录 -->
-                            <el-menu-item index="2">
+                            <el-menu-item index="/requests">
                                 <svg class="icon" height="200" p-id="7611" t="1759231927950"
                                      version="1.1" viewBox="0 0 1024 1024" width="200"
                                      xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +54,7 @@
                             </el-menu-item>
 
                             <!-- 机器人管理 -->
-                            <el-menu-item index="3">
+                            <el-menu-item index="/bots">
                                 <svg class="icon" height="200" p-id="18797" t="1759224362358"
                                      version="1.1" viewBox="0 0 1024 1024" width="200"
                                      xmlns="http://www.w3.org/2000/svg">
@@ -65,7 +66,7 @@
                             </el-menu-item>
 
                             <!-- 大模型管理 -->
-                            <el-menu-item index="4">
+                            <el-menu-item index="/models">
                                 <svg class="icon" height="200" p-id="19847" t="1759224400833"
                                      version="1.1" viewBox="0 0 1024 1024" width="200"
                                      xmlns="http://www.w3.org/2000/svg">
@@ -80,7 +81,7 @@
                             </el-menu-item>
 
                             <!-- 设置 -->
-                            <el-menu-item index="5">
+                            <el-menu-item index="/settings">
                                 <svg class="icon" height="200" p-id="20885" t="1759224433604"
                                      version="1.1" viewBox="0 0 1024 1024" width="200"
                                      xmlns="http://www.w3.org/2000/svg">
@@ -101,7 +102,7 @@
 
                 <!-- 主页面 -->
                 <el-main>
-                    Main
+                    <RouterView></RouterView>
                 </el-main>
 
             </el-container>
