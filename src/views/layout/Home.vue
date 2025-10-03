@@ -5,7 +5,7 @@
 <template>
 
     <!-- 主体页面 -->
-    <el-scrollbar height="100vh">
+    <el-scrollbar>
         <div class="home-page">
 
             <!-- 概览卡片 -->
