@@ -130,6 +130,11 @@ const llmStats = ref([
     --el-card-border-radius: 20px;
 }
 
+.card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 45px rgba(64, 158, 255, 0.15);
+}
+
 .card-header {
     display: flex;
     align-items: center;
