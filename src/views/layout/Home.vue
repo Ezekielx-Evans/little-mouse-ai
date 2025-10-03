@@ -8,16 +8,15 @@ const systemInfo = ref([
 ])
 
 const systemLoad = ref([
-    {label: 'CPU', value: 56},
-    {label: '内存', value: 68},
-    {label: '存储', value: 44}
+    {label: 'CPU', value: 56, total: 100},
+    {label: '内存', value: 68, total: 128},
+    {label: '存储', value: 44, total: 512}
 ])
 
 const llmStats = ref([
     {label: '请求总数', value: '12,843'},
     {label: '成功率', value: '98.4%'},
     {label: 'Token 消耗', value: '1.2M'},
-    {label: '平均响应时间', value: '1.6s'}
 ])
 </script>
 
@@ -71,18 +70,22 @@ const llmStats = ref([
                     <el-col
                         v-for="item in systemLoad"
                         :key="item.label"
-                        :sm="8"
-                        :xs="24"
+                        :md="8"
+                        :sm="12"
+                        :xs="12"
                         class="load-card"
                     >
                         <el-progress
                             :percentage="item.value"
-                            :stroke-width="14"
+                            :stroke-width="8"
                             :width="140"
                             color="#3a7afe"
-                            type="dashboard"
-                        />
-                        <div class="load-label">{{ item.label }}</div>
+                            type="circle"
+                        >
+                            <span class="percentage-value">{{ item.value }}%</span>
+                            <span class="percentage-label">{{ item.label }}</span>
+                        </el-progress>
+                        <div class="load-label">{{ item.value }} / {{item.total}}</div>
                     </el-col>
                 </el-row>
             </el-card>
@@ -99,7 +102,7 @@ const llmStats = ref([
                     <el-col
                         v-for="item in llmStats"
                         :key="item.label"
-                        :md="6"
+                        :md="8"
                         :sm="12"
                         :xs="12"
                     >
@@ -120,6 +123,8 @@ const llmStats = ref([
 <style scoped>
 
 .home-page {
+    margin-left:100px;
+    margin-right:100px;
     padding: 24px;
     display: flex;
     flex-direction: column;
@@ -161,7 +166,7 @@ const llmStats = ref([
 
 .info-label {
     font-size: 16px;
-    color: #6b7280;
+    color: #606266;
     margin-bottom: 6px;
 }
 
@@ -181,7 +186,18 @@ const llmStats = ref([
 
 .load-label {
     font-weight: 600;
-    color: #111827;
+    color: #606266;
+}
+
+.percentage-value {
+    display: block;
+    margin-top: 10px;
+    font-size: 28px;
+}
+.percentage-label {
+    display: block;
+    margin-top: 10px;
+    font-size: 12px;
 }
 
 .stat-card {
@@ -194,7 +210,7 @@ const llmStats = ref([
 
 .stat-label {
     font-size: 16px;
-    color: #6b7280;
+    color: #606266;
     margin-bottom: 6px;
 }
 
