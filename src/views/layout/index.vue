@@ -16,7 +16,7 @@ import Sidebar from "@/views/layout/Sidebar.vue";
             <el-container>
 
                 <!-- 主页面 -->
-                <el-main>
+                <el-main class="main">
                     <RouterView></RouterView>
                 </el-main>
 
@@ -30,6 +30,10 @@ import Sidebar from "@/views/layout/Sidebar.vue";
 .sidebar {
     height: 100vh;
     border-right: 1px solid var(--el-border-color);
+}
+
+.main{
+    height: 100vh;
 }
 
 </style>
