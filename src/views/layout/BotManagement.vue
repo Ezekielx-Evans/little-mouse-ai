@@ -1,41 +1,54 @@
 <script setup>
 
-import {ElMessage, ElMessageBox} from 'element-plus'
 import {Delete, Edit, Plus} from '@element-plus/icons-vue'
-import {computed, ref, watch} from "vue";
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {computed, onMounted, ref} from "vue";
 
-const configs = ref([
-    {
-        id: 'bot-001',
-        name: '客服助手',
-        enabled: true,
-        appId: 'APP-202401',
-        appSecret: 'SECRET-58FJ2',
-        token: 'TOKEN-91XZ3',
-        image: new URL('@/assets/images/little-mouse.png', import.meta.url).href,
-    },
-    {
-        id: 'bot-002',
-        name: '销售助理',
-        enabled: false,
-        appId: '',
-        appSecret: '',
-        token: '',
-        image: new URL('@/assets/images/little-mouse.png', import.meta.url).href,
-    },
-])
+// 配置文件列表
+const configs = ref([])
 
-const selectedId = ref(configs.value[0]?.id ?? '')
-
-const handleSelect = (id) => {
-    selectedId.value = id
+// 获取配置文件
+const getConfigs = () => {
+    configs.value.push({
+            id: 'bot-001',
+            name: '客服助手',
+            enabled: true,
+            appId: 'APP-202401',
+            appSecret: 'SECRET-58FJ2',
+            token: 'TOKEN-91XZ3',
+            image: '/src/assets/images/little-mouse.png',
+        },
+        {
+            id: 'bot-002',
+            name: '销售助理',
+            enabled: false,
+            appId: '',
+            appSecret: '',
+            token: '',
+            image: '/src/assets/images/little-mouse.png',
+        },)
 }
 
+
+// 当前选中的配置ID
+const selectedId = ref(configs.value[0]?.id ?? '')
+
+// 当前选中的配置文件
+const currentConfig = ref()
+
+// 选择其他配置时的行为
+const handleSelect = (id) => {
+    selectedId.value = id
+    isDisabled.value = true
+    currentConfig.value = configs.value.find(item => item.id === id)
+}
+
+// 添加配置时的行为
 const handleAdd = () => {
     const index = configs.value.length + 1
     const id = `bot-${Date.now()}`
     const name = `机器人配置 ${index}`
-    const image = new URL('@/assets/images/little-mouse.png', import.meta.url).href
+    const image = '/src/assets/images/little-mouse.png'
 
     configs.value.push({
         id,
@@ -47,10 +60,17 @@ const handleAdd = () => {
         image,
     })
 
-    selectedId.value = id
+    handleSelect(id)
     ElMessage.success('已新增机器人配置')
 }
 
+// 点击编辑按钮时的行为
+const handleEdit = (item) => {
+    isDisabled.value = false
+    ElMessage.success(`正在编辑「${item.name}」`)
+}
+
+// 删除配置时的行为
 const handleDelete = (config) => {
     ElMessageBox.confirm(`确认删除「${config.name}」吗？`, '提示', {
         confirmButtonText: '确定',
@@ -71,25 +91,18 @@ const handleDelete = (config) => {
         })
 }
 
-const handleEdit = (config) => {
-    ElMessage.success(`「${config.name}」配置，保存成功`)
-    selectedId.value = config.id
-}
+// 是否允许编辑配置
+const isDisabled = ref(true)
 
-const currentConfig = computed(() => configs.value.find((item) => item.id === selectedId.value))
-
+// 生成回调地址的函数
 const generateCallbackUrl = (id) => `https://<网页地址>/bots/${id}/callback`
 
+// 实时更新回调地址，如果没有则调用生成函数
 const callbackUrl = computed(() => (currentConfig.value ? generateCallbackUrl(currentConfig.value.id) : ''))
 
-watch(
-    () => currentConfig.value?.enabled,
-    (val, oldVal) => {
-        if (typeof val === 'boolean' && val !== oldVal && currentConfig.value) {
-            ElMessage.success(`「${currentConfig.value.name}」已${val ? '开启' : '关闭'}`)
-        }
-    }
-)
+onMounted(() => {
+    getConfigs()
+})
 
 </script>
 
@@ -143,6 +156,7 @@ watch(
 
                                 <div class="config-actions">
                                     <el-button
+                                        :disabled="item.id !== selectedId"
                                         :icon="Edit"
                                         circle
                                         text
@@ -169,9 +183,13 @@ watch(
                         </div>
                         <div v-if="currentConfig" class="detail-content">
                             <el-form :model="currentConfig" label-position="top" label-width="96px">
+                                <!-- 机器人名称 -->
                                 <el-form-item label="名称">
-                                    <el-input v-model="currentConfig.name" 请输入机器人名称/>
+                                    <el-input v-model="currentConfig.name" :disabled="isDisabled"
+                                              placeholder="请输入机器人名称"/>
                                 </el-form-item>
+
+                                <!-- 开启按钮 -->
                                 <el-form-item label="开启">
                                     <el-switch
                                         v-model="currentConfig.enabled"
@@ -179,18 +197,40 @@ watch(
                                         inactive-color="#909399"
                                     />
                                 </el-form-item>
+
+                                <!-- App ID -->
                                 <el-form-item label="App ID">
-                                    <el-input v-model="currentConfig.appId" placeholder="请输入 App ID"/>
+                                    <el-input v-model="currentConfig.appId" :disabled="isDisabled"
+                                              placeholder="请输入 App ID"/>
                                 </el-form-item>
+
+                                <!-- App Secret -->
                                 <el-form-item label="App Secret">
-                                    <el-input v-model="currentConfig.appSecret" placeholder="请输入 App Secret"/>
+                                    <el-input v-model="currentConfig.appSecret" :disabled="isDisabled"
+                                              placeholder="请输入 App Secret"/>
                                 </el-form-item>
+
+                                <!-- Token -->
                                 <el-form-item label="Token">
-                                    <el-input v-model="currentConfig.token" placeholder="请输入 Token"/>
+                                    <el-input v-model="currentConfig.token" :disabled="isDisabled"
+                                              placeholder="请输入 Token"/>
                                 </el-form-item>
+
+                                <!-- 回调 URL -->
                                 <el-form-item label="回调 URL">
                                     <el-input :model-value="callbackUrl" disabled/>
                                 </el-form-item>
+
+                                <!-- 保存与重置按钮 -->
+                                <el-form-item>
+                                    <el-button :disabled="isDisabled" type="primary" @click="submitForm(ruleFormRef)">
+                                        保存
+                                    </el-button>
+                                    <el-button :disabled="isDisabled" @click="resetForm(ruleFormRef)">
+                                        重置
+                                    </el-button>
+                                </el-form-item>
+
                             </el-form>
                         </div>
                         <div v-else class="empty-state">
