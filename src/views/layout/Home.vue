@@ -90,7 +90,7 @@ const llmStats = ref([
                 </el-row>
             </el-card>
 
-            <!-- LMM 统计卡片 -->
+            <!-- LLM 统计卡片 -->
             <el-card class="card">
                 <template #header>
                     <div class="card-header">
