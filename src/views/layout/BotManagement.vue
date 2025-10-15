@@ -53,7 +53,7 @@ const handleAdd = () => {
     configs.value.push({
         id,
         name,
-        enabled: true,
+        enabled: false,
         appId: '',
         appSecret: '',
         token: '',
@@ -99,6 +99,65 @@ const generateCallbackUrl = (id) => `https://<网页地址>/bots/${id}/callback`
 
 // 实时更新回调地址，如果没有则调用生成函数
 const callbackUrl = computed(() => (currentConfig.value ? generateCallbackUrl(currentConfig.value.id) : ''))
+
+// 表单实例
+const configForm = ref()
+
+// 表单校验规则
+const rules = ref({
+    name: [
+        { required: true, message: '名称不能为空！', trigger: 'blur' },
+    ],
+    appId: [
+        { required: true, message: 'App ID 不能为空！', trigger: 'blur' },
+        {
+            validator: (rule, value, callback) => {
+                const reg = /^[0-9]+$/; // 纯数字
+                if (!value) {
+                    callback(new Error('App ID 不能为空！'))
+                } else if (!reg.test(value)) {
+                    callback(new Error('App ID 为纯数字！'))
+                } else {
+                    callback()
+                }
+            },
+            trigger: 'blur'
+        }
+    ],
+    appSecret: [
+        { required: true, message: 'App Secret 不能为空！', trigger: 'blur' },
+        {
+            validator: (rule, value, callback) => {
+                const reg = /^[A-Za-z0-9]{32}$/; // 32位字母数字
+                if (!value) {
+                    callback(new Error('App Secret 不能为空！'))
+                } else if (!reg.test(value)) {
+                    callback(new Error('App Secret 为32位字母数字组合！'))
+                } else {
+                    callback()
+                }
+            },
+            trigger: 'blur'
+        }
+    ],
+    token: [
+        { required: true, message: 'Token 不能为空！', trigger: 'blur' },
+        {
+            validator: (rule, value, callback) => {
+                const reg = /^[A-Za-z0-9]{32}$/; // 32位字母数字
+                if (!value) {
+                    callback(new Error('Token 不能为空！'))
+                } else if (!reg.test(value)) {
+                    callback(new Error('Token 为32位字母数字组合！'))
+                } else {
+                    callback()
+                }
+            },
+            trigger: 'blur'
+        }
+    ],
+})
+
 
 onMounted(() => {
     getConfigs()
@@ -182,9 +241,10 @@ onMounted(() => {
                             配置详情
                         </div>
                         <div v-if="currentConfig" class="detail-content">
-                            <el-form :model="currentConfig" label-position="top" label-width="96px">
+                            <el-form ref="configForm" :model="currentConfig" :rules="rules" label-position="top"
+                                     label-width="96px">
                                 <!-- 机器人名称 -->
-                                <el-form-item label="名称">
+                                <el-form-item label="名称" prop="name">
                                     <el-input v-model="currentConfig.name" :disabled="isDisabled"
                                               placeholder="请输入机器人名称"/>
                                 </el-form-item>
@@ -193,25 +253,26 @@ onMounted(() => {
                                 <el-form-item label="开启">
                                     <el-switch
                                         v-model="currentConfig.enabled"
+                                        :disabled="isDisabled"
                                         active-color="#67C23A"
                                         inactive-color="#909399"
                                     />
                                 </el-form-item>
 
                                 <!-- App ID -->
-                                <el-form-item label="App ID">
+                                <el-form-item label="App ID" prop="appId">
                                     <el-input v-model="currentConfig.appId" :disabled="isDisabled"
                                               placeholder="请输入 App ID"/>
                                 </el-form-item>
 
                                 <!-- App Secret -->
-                                <el-form-item label="App Secret">
+                                <el-form-item label="App Secret" prop="appSecret">
                                     <el-input v-model="currentConfig.appSecret" :disabled="isDisabled"
                                               placeholder="请输入 App Secret"/>
                                 </el-form-item>
 
                                 <!-- Token -->
-                                <el-form-item label="Token">
+                                <el-form-item label="Token" prop="token">
                                     <el-input v-model="currentConfig.token" :disabled="isDisabled"
                                               placeholder="请输入 Token"/>
                                 </el-form-item>
@@ -223,10 +284,10 @@ onMounted(() => {
 
                                 <!-- 保存与重置按钮 -->
                                 <el-form-item>
-                                    <el-button :disabled="isDisabled" type="primary" @click="submitForm(ruleFormRef)">
+                                    <el-button :disabled="isDisabled" type="primary" @click="submitForm(configForm)">
                                         保存
                                     </el-button>
-                                    <el-button :disabled="isDisabled" @click="resetForm(ruleFormRef)">
+                                    <el-button :disabled="isDisabled" @click="resetForm(configForm)">
                                         重置
                                     </el-button>
                                 </el-form-item>
