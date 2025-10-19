@@ -1,46 +1,51 @@
 <script setup>
 import {Delete, Edit, Plus} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 
 // 流程配置列表
 const configs = ref([])
 
-// 模板选项
-const templateOptions = ref([
-    {
-        value:'AITemplate',
-        label: 'AI 角色模板',
-        options: [
-            {
-                value: 'ai-custom',
-                label: '自定义角色',
-            },
-            {
-                value: 'catgirl',
-                label: '猫娘',
-            },
-        ],
-    },
-    {
-        value:'functionTemplate',
-        label: '功能模板',
-        options: [
-            {
-                value: 'function-custom',
-                label: '自定义功能',
-            },
-            {
-                value: 'life_assistant',
-                label: '生活助手',
-            },
-            {
-                value: 'delta_force_assistant',
-                label: '三角洲游戏助手',
-            },
-        ],
-    },
+// 当前流程配置
+const currentConfig = ref()
+
+// 是否允许编辑
+const isDisabled = ref(true)
+
+// 新增：模板类型和模板选项拆分，模拟后端数据结构
+const templateTypeOptions = ref([
+    {value: 'AITemplate', label: 'AI 角色模板'},
+    {value: 'functionTemplate', label: '功能模板'},
 ])
+
+// 新增：不同模板类型下的模板列表
+const templateOptions = ref({
+    AITemplate: [
+        {value: 'ai-custom', label: '自定义角色'},
+        {value: 'catgirl', label: '猫娘'},
+    ],
+    functionTemplate: [
+        {value: 'function-custom', label: '自定义功能'},
+        {value: 'life_assistant', label: '生活助手'},
+        {value: 'delta_force_assistant', label: '三角洲游戏助手'},
+    ],
+})
+
+// 新增：根据当前配置计算可用模板
+const currentTemplateOptions = computed(() => {
+    const type = currentConfig.value?.templateType
+    return type ? templateOptions.value[type] ?? [] : []
+})
+
+// 新增：根据模板类型与模板值获取展示名称
+const getTemplateLabel = (type, value) => {
+    return (templateOptions.value[type] ?? []).find(item => item.value === value)?.label ?? ''
+}
+
+// 新增：获取模板类型名称
+const getTemplateTypeLabel = (type) => {
+    return templateTypeOptions.value.find(item => item.value === type)?.label ?? ''
+}
 
 // 机器人列表（来自机器人管理）
 const botOptions = ref([
@@ -58,12 +63,6 @@ const modelOptions = ref([
 // 当前选中的流程 ID
 const selectedId = ref(configs.value[0]?.id ?? '')
 
-// 当前流程配置
-const currentConfig = ref()
-
-// 是否允许编辑
-const isDisabled = ref(true)
-
 // 表单实例
 const configForm = ref()
 
@@ -74,19 +73,23 @@ const getConfigs = () => {
             id: 'process-001',
             name: '猫娘',
             enabled: true,
+            // 新增：区分模板类型
+            templateType: 'AITemplate',
             template: 'catgirl',
             botId: 'bot-001',
             modelId: 'deepseek-chat',
             triggerCommand: '',
             codeInjection: '/* 自定义逻辑 */',
-            role: '',
+            role: '你是一只可爱活泼的猫娘，喜欢卖萌。',
             image: '/src/assets/images/mouse.png',
         },
         {
             id: 'process-002',
             name: '小助手',
             enabled: false,
-            template: 'little_assistant',
+            // 新增：区分模板类型
+            templateType: 'functionTemplate',
+            template: 'life_assistant',
             botId: 'bot-002',
             modelId: 'deepseek-reasoner',
             triggerCommand: '/life_assistant',
@@ -98,6 +101,8 @@ const getConfigs = () => {
             id: 'process-003',
             name: '三角洲行动游戏助手',
             enabled: true,
+            // 新增：区分模板类型
+            templateType: 'functionTemplate',
             template: 'delta_force_assistant',
             botId: 'bot-003',
             modelId: 'deepseek-chat',
@@ -107,6 +112,9 @@ const getConfigs = () => {
             image: '/src/assets/images/mouse.png',
         },
     )
+    // 新增：默认选中第一条配置
+    selectedId.value = configs.value[0]?.id ?? ''
+    currentConfig.value = configs.value[0] ?? null
 }
 
 // 选择流程
@@ -127,7 +135,9 @@ const handleAdd = () => {
         id,
         name: `新建流程 ${index}`,
         enabled: false,
-        template: 'custom',
+        // 新增：新建流程默认使用 AI 自定义模板
+        templateType: 'AITemplate',
+        template: 'ai-custom',
         botId: defaultBot,
         modelId: defaultModel,
         triggerCommand: `/flow${index}`,
@@ -174,6 +184,10 @@ const rules = ref({
     name: [
         {required: true, message: '名称不能为空！', trigger: 'blur'},
     ],
+    // 新增：校验模板类型
+    templateType: [
+        {required: true, message: '请选择模板类型！', trigger: 'change'},
+    ],
     template: [
         {required: true, message: '请选择流程模板！', trigger: 'change'},
     ],
@@ -198,9 +212,31 @@ const rules = ref({
             trigger: 'blur',
         },
     ],
-    role: [
-        {required: true, message: '请选择机器人！', trigger: 'change'},
-    ],
+})
+
+// 新增：根据模板类型控制字段可见性与可编辑性
+const isAiTemplate = computed(() => currentConfig.value?.templateType === 'AITemplate')
+const isFunctionTemplate = computed(() => currentConfig.value?.templateType === 'functionTemplate')
+const showTriggerField = computed(() => !isAiTemplate.value)
+const showCodeField = computed(() => !isAiTemplate.value)
+const showModelField = computed(() => !isFunctionTemplate.value)
+const showRoleField = computed(() => isAiTemplate.value)
+const isRoleEditable = computed(() => isAiTemplate.value && currentConfig.value?.template === 'ai-custom')
+const isCodeEditable = computed(() => {
+    if (isAiTemplate.value) return false
+    if (isFunctionTemplate.value) {
+        return currentConfig.value?.template === 'function-custom'
+    }
+    return true
+})
+
+// 新增：监听模板类型变化，同步模板值
+watch(() => currentConfig.value?.templateType, (type) => {
+    if (!currentConfig.value || !type) return
+    const available = templateOptions.value[type] ?? []
+    if (!available.find(item => item.value === currentConfig.value.template)) {
+        currentConfig.value.template = available[0]?.value ?? ''
+    }
 })
 
 // 保存表单
@@ -262,10 +298,10 @@ onMounted(() => {
                                     <el-image :src="item.image" fit="cover"/>
                                     <div class="config-content">
                                         <div class="config-name">{{ item.name }}</div>
+                                        <!-- 新增：展示模板类型与名称 -->
                                         <div class="config-meta">
-                                            <el-tag size="small">{{
-                                                    templateOptions.find(option => option.value === item.template)?.label
-                                                }}
+                                            <el-tag size="small">
+                                                {{ getTemplateTypeLabel(item.templateType) }} / {{ getTemplateLabel(item.templateType, item.template) }}
                                             </el-tag>
                                             <el-tag :type="item.enabled ? 'success' : 'info'" size="small">
                                                 {{ item.enabled ? '运行中' : '已停用' }}
@@ -325,24 +361,35 @@ onMounted(() => {
                                     />
                                 </el-form-item>
 
+                                <!-- 新增：模板类型选择 -->
+                                <el-form-item label="模板类型" prop="templateType">
+                                    <el-select
+                                        v-model="currentConfig.templateType"
+                                        :disabled="isDisabled"
+                                        placeholder="请选择模板类型"
+                                    >
+                                        <el-option
+                                            v-for="item in templateTypeOptions"
+                                            :key="item.value"
+                                            :label="item.label"
+                                            :value="item.value"
+                                        />
+                                    </el-select>
+                                </el-form-item>
+
+                                <!-- 新增：根据模板类型细分模板 -->
                                 <el-form-item label="模板" prop="template">
                                     <el-select
                                         v-model="currentConfig.template"
                                         :disabled="isDisabled"
                                         placeholder="请选择流程模板"
                                     >
-                                        <el-option-group
-                                            v-for="template in templateOptions"
-                                            :key="template.value"
-                                            :label="template.label"
-                                        >
-                                            <el-option
-                                                v-for="item in template.options"
-                                                :key="item.value"
-                                                :label="item.label"
-                                                :value="item.value"
-                                            />
-                                        </el-option-group>
+                                        <el-option
+                                            v-for="item in currentTemplateOptions"
+                                            :key="item.value"
+                                            :label="item.label"
+                                            :value="item.value"
+                                        />
                                     </el-select>
                                 </el-form-item>
 
@@ -361,7 +408,8 @@ onMounted(() => {
                                     </el-select>
                                 </el-form-item>
 
-                                <el-form-item label="模型" prop="modelId">
+                                <!-- 新增：功能模板隐藏模型配置 -->
+                                <el-form-item v-if="showModelField" label="模型" prop="modelId">
                                     <el-select
                                         v-model="currentConfig.modelId"
                                         :disabled="isDisabled"
@@ -374,44 +422,41 @@ onMounted(() => {
                                             :value="model.value"
                                         />
                                     </el-select>
-                                    <div v-if="currentConfig.template !== 'roleplay'" class="field-tip">
-                                        仅角色扮演模板支持修改模型
-                                    </div>
                                 </el-form-item>
 
-                                <el-form-item label="触发命令" prop="triggerCommand">
+                                <!-- 新增：AI 模板隐藏触发命令 -->
+                                <el-form-item v-if="showTriggerField" label="触发命令" prop="triggerCommand">
                                     <el-input
                                         v-model="currentConfig.triggerCommand"
                                         :disabled="isDisabled"
                                         placeholder="请输入以 / 开头的命令"
                                     />
-                                    <div v-if="currentConfig.template === 'roleplay'" class="field-tip">
-                                        角色扮演模板直接 @ 即可，不需要触发命令
-                                    </div>
                                 </el-form-item>
 
-                                <el-form-item label="代码注入">
+                                <!-- 新增：按模板类型控制代码注入展示与可编辑性 -->
+                                <el-form-item v-if="showCodeField" label="代码注入">
                                     <el-input
                                         v-model="currentConfig.codeInjection"
                                         :autosize="{ minRows: 3 }"
-                                        :disabled="isDisabled"
+                                        :disabled="isDisabled || !isCodeEditable"
                                         placeholder="请输入自定义代码"
                                         template="textarea"
                                     />
-                                    <div v-if="currentConfig.template !== 'custom'" class="field-tip">
-                                        仅自定义模板支持自定义代码
+                                    <div v-if="isFunctionTemplate && currentConfig.template !== 'function-custom'" class="field-tip">
+                                        仅自定义功能模板支持修改代码
                                     </div>
                                 </el-form-item>
 
-                                <el-form-item label="角色描述" prop="role">
+                                <!-- 新增：功能模板隐藏角色描述 -->
+                                <el-form-item v-if="showRoleField" label="角色描述" prop="role">
                                     <el-input
                                         v-model="currentConfig.role"
-                                        :disabled="isDisabled"
+                                        :disabled="isDisabled || !isRoleEditable"
                                         placeholder="请输入 AI 扮演角色"
                                         type="textarea"
                                     />
-                                    <div v-if="currentConfig.template !== 'roleplay'" class="field-tip">
-                                        仅角色扮演模板支持修改角色描述
+                                    <div v-if="isAiTemplate && currentConfig.template !== 'ai-custom'" class="field-tip">
+                                        仅自定义角色模板支持修改角色描述
                                     </div>
                                 </el-form-item>
 
