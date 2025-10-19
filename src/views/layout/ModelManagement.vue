@@ -16,7 +16,7 @@ const getConfigs = () => {
             baseUrl: 'https://api.deepseek.com/v1',
             apiKey: 'sk-15c040979d3e4b26abae62b09d3adfd5',
             model: 'deepseek-chat',
-            image: '/src/assets/images/little-mouse.png',
+            image: '/src/assets/images/deepseek.png',
         },
         {
             id: 'model-002',
@@ -25,7 +25,7 @@ const getConfigs = () => {
             baseUrl: 'https://api.deepseek.com/v1',
             apiKey: '',
             model: 'deepseek-reasoner',
-            image: '/src/assets/images/little-mouse.png',
+            image: '/src/assets/images/deepseek.png',
         },
     )
 }
@@ -51,7 +51,7 @@ const handleAdd = () => {
     const index = configs.value.length + 1
     const id = `model-${Date.now()}`
     const name = `模型配置 ${index}`
-    const image = '/src/assets/images/little-mouse.png'
+    const image = '/src/assets/images/deepseek.png'
 
     configs.value.push({
         id,
@@ -159,7 +159,7 @@ onMounted(() => {
             <el-card class="card">
                 <div class="card-header">
                     <span class="decor"></span>
-                    模型管理
+                    配置
                 </div>
             </el-card>
 
@@ -264,7 +264,7 @@ onMounted(() => {
                             </el-form>
                         </div>
                         <div v-else class="empty-state">
-                            <el-empty description="请先创建或选择一个模型配置"/>
+                            <el-empty description="请先创建或选择一个配置"/>
                         </div>
                     </div>
                 </div>
