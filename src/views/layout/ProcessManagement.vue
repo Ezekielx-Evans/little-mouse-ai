@@ -8,24 +8,39 @@ const configs = ref([])
 
 // 模板选项
 const templateOptions = ref([
-    {label: '自定义', value: 'custom'},
-    {label: '角色扮演', value: 'roleplay'},
-    {label: '知识库问答', value: 'knowledge'},
+    {
+        value:'AITemplate',
+        label: 'AI 角色模板',
+        options: [
+            {
+                value: 'ai-custom',
+                label: '自定义角色',
+            },
+            {
+                value: 'catgirl',
+                label: '猫娘',
+            },
+        ],
+    },
+    {
+        value:'functionTemplate',
+        label: '功能模板',
+        options: [
+            {
+                value: 'function-custom',
+                label: '自定义功能',
+            },
+            {
+                value: 'life_assistant',
+                label: '生活助手',
+            },
+            {
+                value: 'delta_force_assistant',
+                label: '三角洲游戏助手',
+            },
+        ],
+    },
 ])
-
-// // 模板选项
-// // AI 角色扮演模板
-// const AITemplateOptions = ref([
-//     {label: '自定义', value: 'custom'},
-//     {label: '角色扮演', value: 'roleplay'},
-//     {label: '知识库问答', value: 'knowledge'},
-// ])
-// // 功能模板
-// const functionTemplateOptions = ref([
-//     {label: '自定义', value: 'custom'},
-//     {label: '角色扮演', value: 'roleplay'},
-//     {label: '知识库问答', value: 'knowledge'},
-// ])
 
 // 机器人列表（来自机器人管理）
 const botOptions = ref([
@@ -57,36 +72,36 @@ const getConfigs = () => {
     configs.value.push(
         {
             id: 'process-001',
-            name: '通用问答流程',
+            name: '猫娘',
             enabled: true,
-            template: 'custom',
+            template: 'catgirl',
             botId: 'bot-001',
             modelId: 'deepseek-chat',
-            triggerCommand: '/qa',
+            triggerCommand: '',
             codeInjection: '/* 自定义逻辑 */',
             role: '',
             image: '/src/assets/images/mouse.png',
         },
         {
             id: 'process-002',
-            name: '角色扮演主持人',
+            name: '小助手',
             enabled: false,
-            template: 'roleplay',
+            template: 'little_assistant',
             botId: 'bot-002',
             modelId: 'deepseek-reasoner',
-            triggerCommand: '/host',
+            triggerCommand: '/life_assistant',
             codeInjection: '',
             role: '',
             image: '/src/assets/images/mouse.png',
         },
         {
             id: 'process-003',
-            name: '知识库检索',
+            name: '三角洲行动游戏助手',
             enabled: true,
-            template: 'knowledge',
+            template: 'delta_force_assistant',
             botId: 'bot-003',
             modelId: 'deepseek-chat',
-            triggerCommand: '/kb',
+            triggerCommand: '/delta_force_assistant',
             codeInjection: '',
             role: '',
             image: '/src/assets/images/mouse.png',
@@ -208,24 +223,6 @@ const resetForm = (formRef) => {
     ElMessage.success('已重置表单')
 }
 
-// 只有当模板选择角色扮演时，模型才能被编辑
-const isModelDisabled = computed(() => {
-    if (!currentConfig.value) return true
-    return isDisabled.value || currentConfig.value.template !== 'roleplay'
-})
-
-// 只有当模板不是角色扮演时，才能自定义触发命令
-const isTriggerCommandDisabled = computed(() => {
-    if (!currentConfig.value) return true
-    return isDisabled.value || currentConfig.value.template === 'roleplay'
-})
-
-// 只有当模板为自定义时，才能自定义代码框
-const isCodeInjectionDisabled = computed(() => {
-    if (!currentConfig.value) return true
-    return isDisabled.value || currentConfig.value.template !== 'custom'
-})
-
 onMounted(() => {
     getConfigs()
 
@@ -334,12 +331,18 @@ onMounted(() => {
                                         :disabled="isDisabled"
                                         placeholder="请选择流程模板"
                                     >
-                                        <el-option
-                                            v-for="option in templateOptions"
-                                            :key="option.value"
-                                            :label="option.label"
-                                            :value="option.value"
-                                        />
+                                        <el-option-group
+                                            v-for="template in templateOptions"
+                                            :key="template.value"
+                                            :label="template.label"
+                                        >
+                                            <el-option
+                                                v-for="item in template.options"
+                                                :key="item.value"
+                                                :label="item.label"
+                                                :value="item.value"
+                                            />
+                                        </el-option-group>
                                     </el-select>
                                 </el-form-item>
 
@@ -361,7 +364,7 @@ onMounted(() => {
                                 <el-form-item label="模型" prop="modelId">
                                     <el-select
                                         v-model="currentConfig.modelId"
-                                        :disabled="isModelDisabled"
+                                        :disabled="isDisabled"
                                         placeholder="请选择模型"
                                     >
                                         <el-option
@@ -379,7 +382,7 @@ onMounted(() => {
                                 <el-form-item label="触发命令" prop="triggerCommand">
                                     <el-input
                                         v-model="currentConfig.triggerCommand"
-                                        :disabled="isTriggerCommandDisabled"
+                                        :disabled="isDisabled"
                                         placeholder="请输入以 / 开头的命令"
                                     />
                                     <div v-if="currentConfig.template === 'roleplay'" class="field-tip">
@@ -391,7 +394,7 @@ onMounted(() => {
                                     <el-input
                                         v-model="currentConfig.codeInjection"
                                         :autosize="{ minRows: 3 }"
-                                        :disabled="isCodeInjectionDisabled"
+                                        :disabled="isDisabled"
                                         placeholder="请输入自定义代码"
                                         template="textarea"
                                     />
@@ -403,7 +406,7 @@ onMounted(() => {
                                 <el-form-item label="角色描述" prop="role">
                                     <el-input
                                         v-model="currentConfig.role"
-                                        :disabled="isModelDisabled"
+                                        :disabled="isDisabled"
                                         placeholder="请输入 AI 扮演角色"
                                         type="textarea"
                                     />
@@ -430,7 +433,7 @@ onMounted(() => {
                             </el-form>
                         </div>
                         <div v-else class="empty-state">
-                            <el-empty role="请先创建或选择一个流程"/>
+                            <el-empty description="请先创建或选择一个配置"/>
                         </div>
                     </div>
                 </div>
