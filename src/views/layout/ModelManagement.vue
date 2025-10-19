@@ -155,7 +155,7 @@ onMounted(() => {
 
 <template>
     <el-scrollbar>
-        <div class="bot-page">
+        <div class="model-page">
             <el-card class="card">
                 <div class="card-header">
                     <span class="decor"></span>
@@ -164,7 +164,7 @@ onMounted(() => {
             </el-card>
 
             <el-card class="card">
-                <div class="bot-layout">
+                <div class="model-layout">
                     <!-- 左侧配置列表 -->
                     <div class="list-panel">
                         <div class="panel-header">
@@ -274,7 +274,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.bot-page {
+.model-page {
     margin-left: 100px;
     margin-right: 100px;
     padding: 24px;
@@ -310,14 +310,15 @@ onMounted(() => {
     margin-right: 8px;
 }
 
-.bot-layout {
+.model-layout {
     display: flex;
+    overflow-x: auto;
     gap: 24px;
 }
 
 .list-panel,
 .details-panel {
-    flex: 1;
+    flex-grow: 1;
     background: #f8f9ff;
     border-radius: 16px;
     padding: 24px;

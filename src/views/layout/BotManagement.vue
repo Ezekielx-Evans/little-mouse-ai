@@ -16,6 +16,7 @@ const getConfigs = () => {
             appId: 'APP-202401',
             appSecret: 'SECRET-58FJ2',
             token: 'TOKEN-91XZ3',
+            sandbox: true,
             image: '/src/assets/images/little-mouse.png',
         },
         {
@@ -25,6 +26,7 @@ const getConfigs = () => {
             appId: '',
             appSecret: '',
             token: '',
+            sandbox: true,
             image: '/src/assets/images/little-mouse.png',
         },)
 }
@@ -57,6 +59,7 @@ const handleAdd = () => {
         appId: '',
         appSecret: '',
         token: '',
+        sandbox: true,
         image,
     })
 
@@ -277,6 +280,16 @@ onMounted(() => {
                                               placeholder="请输入 Token"/>
                                 </el-form-item>
 
+                                <!-- 沙盒环境 -->
+                                <el-form-item label="沙盒环境">
+                                    <el-switch
+                                        v-model="currentConfig.sandbox"
+                                        :disabled="isDisabled"
+                                        active-color="#67C23A"
+                                        inactive-color="#909399"
+                                    />
+                                </el-form-item>
+
                                 <!-- 回调 URL -->
                                 <el-form-item label="回调 URL">
                                     <el-input :model-value="callbackUrl" disabled/>
@@ -343,12 +356,13 @@ onMounted(() => {
 
 .bot-layout {
     display: flex;
+    overflow-x: auto;
     gap: 24px;
 }
 
 .list-panel,
 .details-panel {
-    flex: 1;
+    flex-grow: 1;
     background: #f8f9ff;
     border-radius: 16px;
     padding: 24px;
