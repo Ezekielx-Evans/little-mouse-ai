@@ -397,6 +397,10 @@ onMounted(() => {
     font-weight: 600;
     font-size: 16px;
     color: #303133;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .config-actions {

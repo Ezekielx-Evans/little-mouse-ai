@@ -12,13 +12,13 @@ const currentConfig = ref()
 // 是否允许编辑
 const isDisabled = ref(true)
 
-// 新增：模板类型和模板选项拆分，模拟后端数据结构
+// 模板类型
 const templateTypeOptions = ref([
-    {value: 'AITemplate', label: 'AI 角色模板'},
+    {value: 'AITemplate', label: '角色模板'},
     {value: 'functionTemplate', label: '功能模板'},
 ])
 
-// 新增：不同模板类型下的模板列表
+// 模板选项
 const templateOptions = ref({
     AITemplate: [
         {value: 'ai-custom', label: '自定义角色'},
@@ -31,18 +31,16 @@ const templateOptions = ref({
     ],
 })
 
-// 新增：根据当前配置计算可用模板
+// 查看当前模板种类中的模板
 const currentTemplateOptions = computed(() => {
+    // 获取当前配置模板类型
     const type = currentConfig.value?.templateType
+    // type ? ... : [] -- 如果 type 有值（比如 "AITemplate"），就执行 ...，否则直接返回 []
+    // templateOptions.value[type] ?? [] -- 从 templateOptions 中取当前模板种类中的模板。如果取不到（是 null 或 undefined），就返回空数组 []。
     return type ? templateOptions.value[type] ?? [] : []
 })
 
-// 新增：根据模板类型与模板值获取展示名称
-const getTemplateLabel = (type, value) => {
-    return (templateOptions.value[type] ?? []).find(item => item.value === value)?.label ?? ''
-}
-
-// 新增：获取模板类型名称
+// 获取模板类型名称
 const getTemplateTypeLabel = (type) => {
     return templateTypeOptions.value.find(item => item.value === type)?.label ?? ''
 }
@@ -112,9 +110,6 @@ const getConfigs = () => {
             image: '/src/assets/images/mouse.png',
         },
     )
-    // 新增：默认选中第一条配置
-    selectedId.value = configs.value[0]?.id ?? ''
-    currentConfig.value = configs.value[0] ?? null
 }
 
 // 选择流程
@@ -214,27 +209,37 @@ const rules = ref({
     ],
 })
 
-// 新增：根据模板类型控制字段可见性与可编辑性
+// 根据模板类型控制字段可见性与可编辑性
+// 判断模板类型是否为 AiTemplate
 const isAiTemplate = computed(() => currentConfig.value?.templateType === 'AITemplate')
+// 判断模板类型是否为 functionTemplate
 const isFunctionTemplate = computed(() => currentConfig.value?.templateType === 'functionTemplate')
+/// 如果模板是 AiTemplate，不显示 触发命令 输入框
 const showTriggerField = computed(() => !isAiTemplate.value)
+// 如果模板是 AiTemplate，不显示 代码注入 输入框
 const showCodeField = computed(() => !isAiTemplate.value)
+// 如果模板是 functionTemplate，不显示 模型 输入框
 const showModelField = computed(() => !isFunctionTemplate.value)
+// 如果模板是 AiTemplate，显示 角色描述 输入框
 const showRoleField = computed(() => isAiTemplate.value)
-const isRoleEditable = computed(() => isAiTemplate.value && currentConfig.value?.template === 'ai-custom')
-const isCodeEditable = computed(() => {
-    if (isAiTemplate.value) return false
-    if (isFunctionTemplate.value) {
-        return currentConfig.value?.template === 'function-custom'
-    }
-    return true
-})
+// 如果模板是 AiTemplate 并且选择的是 "自定义角色(ai-custom)"，角色描述可编辑
+const isRoleEditable = computed(() =>
+    isAiTemplate.value && currentConfig.value?.template === 'ai-custom'
+)
+// 如果模板是 functionTemplate 并且选择的是 "自定义功能(function-custom)"，代码注入可编辑
+const isCodeEditable = computed(() =>
+    isFunctionTemplate.value && currentConfig.value?.template === 'function-custom'
+)
 
-// 新增：监听模板类型变化，同步模板值
+// 监听模板类型变化，当模板从 AiTemplate 切换到 functionTemplate 时自动获取切换后模板的第一个值
 watch(() => currentConfig.value?.templateType, (type) => {
+    // 如果当前配置为空，或者模板类型为空，就直接退出
     if (!currentConfig.value || !type) return
+    // 获取当前类型下所有可用的模板列表
     const available = templateOptions.value[type] ?? []
+    // 如果当前配置的 template 不在可用列表中
     if (!available.find(item => item.value === currentConfig.value.template)) {
+        // 自动切换为该类型下的第一个模板
         currentConfig.value.template = available[0]?.value ?? ''
     }
 })
@@ -301,7 +306,7 @@ onMounted(() => {
                                         <!-- 新增：展示模板类型与名称 -->
                                         <div class="config-meta">
                                             <el-tag size="small">
-                                                {{ getTemplateTypeLabel(item.templateType) }} / {{ getTemplateLabel(item.templateType, item.template) }}
+                                                {{ getTemplateTypeLabel(item.templateType) }}
                                             </el-tag>
                                             <el-tag :type="item.enabled ? 'success' : 'info'" size="small">
                                                 {{ item.enabled ? '运行中' : '已停用' }}
@@ -361,7 +366,7 @@ onMounted(() => {
                                     />
                                 </el-form-item>
 
-                                <!-- 新增：模板类型选择 -->
+                                <!-- 模板类型选择 -->
                                 <el-form-item label="模板类型" prop="templateType">
                                     <el-select
                                         v-model="currentConfig.templateType"
@@ -377,7 +382,7 @@ onMounted(() => {
                                     </el-select>
                                 </el-form-item>
 
-                                <!-- 新增：根据模板类型细分模板 -->
+                                <!-- 模板选择 -->
                                 <el-form-item label="模板" prop="template">
                                     <el-select
                                         v-model="currentConfig.template"
@@ -393,6 +398,7 @@ onMounted(() => {
                                     </el-select>
                                 </el-form-item>
 
+                                <!-- 机器人选择 -->
                                 <el-form-item label="机器人" prop="botId">
                                     <el-select
                                         v-model="currentConfig.botId"
@@ -408,7 +414,7 @@ onMounted(() => {
                                     </el-select>
                                 </el-form-item>
 
-                                <!-- 新增：功能模板隐藏模型配置 -->
+                                <!-- 模型选择 -->
                                 <el-form-item v-if="showModelField" label="模型" prop="modelId">
                                     <el-select
                                         v-model="currentConfig.modelId"
@@ -424,7 +430,7 @@ onMounted(() => {
                                     </el-select>
                                 </el-form-item>
 
-                                <!-- 新增：AI 模板隐藏触发命令 -->
+                                <!-- 触发命令 -->
                                 <el-form-item v-if="showTriggerField" label="触发命令" prop="triggerCommand">
                                     <el-input
                                         v-model="currentConfig.triggerCommand"
@@ -433,24 +439,25 @@ onMounted(() => {
                                     />
                                 </el-form-item>
 
-                                <!-- 新增：按模板类型控制代码注入展示与可编辑性 -->
+                                <!-- 代码注入 -->
                                 <el-form-item v-if="showCodeField" label="代码注入">
                                     <el-input
                                         v-model="currentConfig.codeInjection"
                                         :autosize="{ minRows: 3 }"
                                         :disabled="isDisabled || !isCodeEditable"
                                         placeholder="请输入自定义代码"
-                                        template="textarea"
+                                        type="textarea"
                                     />
                                     <div v-if="isFunctionTemplate && currentConfig.template !== 'function-custom'" class="field-tip">
                                         仅自定义功能模板支持修改代码
                                     </div>
                                 </el-form-item>
 
-                                <!-- 新增：功能模板隐藏角色描述 -->
+                                <!-- 角色描述 -->
                                 <el-form-item v-if="showRoleField" label="角色描述" prop="role">
                                     <el-input
                                         v-model="currentConfig.role"
+                                        :autosize="{ minRows: 3 }"
                                         :disabled="isDisabled || !isRoleEditable"
                                         placeholder="请输入 AI 扮演角色"
                                         type="textarea"
@@ -611,6 +618,10 @@ onMounted(() => {
     font-weight: 600;
     font-size: 16px;
     color: #303133;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .config-meta {

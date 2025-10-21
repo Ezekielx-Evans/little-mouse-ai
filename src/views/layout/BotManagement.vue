@@ -161,6 +161,25 @@ const rules = ref({
     ],
 })
 
+// 保存表单
+const submitForm = (formRef) => {
+    if (!formRef) return
+    formRef.validate((valid) => {
+        if (valid) {
+            isDisabled.value = true
+            ElMessage.success('保存成功')
+        } else {
+            ElMessage.error('请检查表单输入是否正确！')
+        }
+    })
+}
+
+// 重置表单
+const resetForm = (formRef) => {
+    if (!formRef || !currentConfig.value) return
+    formRef.resetFields()
+    ElMessage.success('已重置表单')
+}
 
 onMounted(() => {
     getConfigs()
@@ -441,6 +460,10 @@ onMounted(() => {
     font-weight: 600;
     font-size: 16px;
     color: #303133;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .config-actions {
