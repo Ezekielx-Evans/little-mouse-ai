@@ -104,7 +104,7 @@ const generateCallbackUrl = (id) => `https://<网页地址>/bots/${id}/callback`
 const callbackUrl = computed(() => (currentConfig.value ? generateCallbackUrl(currentConfig.value.id) : ''))
 
 // 表单实例
-const configForm = ref()
+const configFormRef = ref()
 
 // 表单校验规则
 const rules = ref({
@@ -263,7 +263,7 @@ onMounted(() => {
                             配置详情
                         </div>
                         <div v-if="currentConfig" class="detail-content">
-                            <el-form ref="configForm" :model="currentConfig" :rules="rules" label-position="top"
+                            <el-form ref="configFormRef" :model="currentConfig" :rules="rules" label-position="top"
                                      label-width="96px">
                                 <!-- 机器人名称 -->
                                 <el-form-item label="名称" prop="name">
@@ -316,10 +316,10 @@ onMounted(() => {
 
                                 <!-- 保存与重置按钮 -->
                                 <el-form-item>
-                                    <el-button :disabled="isDisabled" type="primary" @click="submitForm(configForm)">
+                                    <el-button :disabled="isDisabled" type="primary" @click="submitForm(configFormRef)">
                                         保存
                                     </el-button>
-                                    <el-button :disabled="isDisabled" @click="resetForm(configForm)">
+                                    <el-button :disabled="isDisabled" @click="resetForm(configFormRef)">
                                         重置
                                     </el-button>
                                 </el-form-item>

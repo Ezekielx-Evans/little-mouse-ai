@@ -62,7 +62,7 @@ const modelOptions = ref([
 const selectedId = ref(configs.value[0]?.id ?? '')
 
 // 表单实例
-const configForm = ref()
+const configFormRef = ref()
 
 // 获取流程配置列表
 const getConfigs = () => {
@@ -343,7 +343,7 @@ onMounted(() => {
                         </div>
                         <div v-if="currentConfig" class="detail-content">
                             <el-form
-                                ref="configForm"
+                                ref="configFormRef"
                                 :model="currentConfig"
                                 :rules="rules"
                                 label-position="top"
@@ -471,13 +471,13 @@ onMounted(() => {
                                     <el-button
                                         :disabled="isDisabled"
                                         type="primary"
-                                        @click="submitForm(configForm)"
+                                        @click="submitForm(configFormRef)"
                                     >
                                         保存
                                     </el-button>
                                     <el-button
                                         :disabled="isDisabled"
-                                        @click="resetForm(configForm)"
+                                        @click="resetForm(configFormRef)"
                                     >
                                         重置
                                     </el-button>
