@@ -6,6 +6,3 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
-/little-mouse-ai.iml
-/modules.xml
-/vcs.xml
