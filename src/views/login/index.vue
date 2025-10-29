@@ -13,7 +13,8 @@ const loginForm = ref({
 
 const rules = {
     password: [
-        {required: true, message: '请输入密码', trigger: 'blur'},
+        {required: true, message: '密码不能为空！', trigger: 'blur'},
+        {min: 6, message: '密码长度至少 6 位', trigger: 'blur'},
     ],
 }
 
@@ -130,7 +131,6 @@ const handleSubmit = (formRef) => {
 }
 
 .login-card {
-    position: relative;
     z-index: 2;
     width: 420px;
     padding: 32px 36px 40px;
