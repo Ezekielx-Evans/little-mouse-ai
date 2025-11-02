@@ -1,5 +1,7 @@
 <script setup>
-import {ref} from 'vue'
+import {onMounted, ref} from 'vue'
+
+import {getHello} from '@/api/systemApi.js'
 
 const systemInfo = ref([
     {label: 'Mouse AI', value: 'v1.0.0'},
@@ -18,6 +20,14 @@ const llmStats = ref([
     {label: '成功率', value: '98.4%'},
     {label: 'Token 消耗', value: '1.2M'},
 ])
+
+onMounted(async () => {
+    try {
+        systemInfo.value[0].value = await getHello()
+    } catch (err) {
+        console.error('获取问候信息失败:', err)
+    }
+})
 </script>
 
 <template>
@@ -85,7 +95,7 @@ const llmStats = ref([
                             <span class="percentage-value">{{ item.value }}%</span>
                             <span class="percentage-label">{{ item.label }}</span>
                         </el-progress>
-                        <div class="load-label">{{ item.value }} / {{item.total}}</div>
+                        <div class="load-label">{{ item.value }} / {{ item.total }}</div>
                     </el-col>
                 </el-row>
             </el-card>
@@ -123,8 +133,8 @@ const llmStats = ref([
 <style scoped>
 
 .home-page {
-    margin-left:100px;
-    margin-right:100px;
+    margin-left: 100px;
+    margin-right: 100px;
     padding: 24px;
     display: flex;
     flex-direction: column;
@@ -194,6 +204,7 @@ const llmStats = ref([
     margin-top: 10px;
     font-size: 28px;
 }
+
 .percentage-label {
     display: block;
     margin-top: 10px;
