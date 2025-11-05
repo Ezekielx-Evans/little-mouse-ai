@@ -4,6 +4,16 @@ import path from 'path'
 import { getDiskInfoSync } from 'node-disk-info'
 
 /**
+ * "Hello World !"
+ *
+ * @function getHelloMessage
+ * @returns {string} 返回问候字符串，例如 "Hello World !"
+ */
+export const getHelloMessage = () => {
+    return 'Hello World !'
+}
+
+/**
  * 获取每个 CPU 核心的使用率（百分比）
  *
  * Node.js 的 os.cpus() 方法会返回每个核心的状态信息，
