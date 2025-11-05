@@ -1,31 +1,23 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import { onMounted, ref } from 'vue'
 
-import {getHello} from '@/api/systemApi.js'
+import { getSystemDashboard } from '@/api/systemApi.js'
 
-const systemInfo = ref([
-    {label: 'Mouse AI', value: 'v1.0.0'},
-    {label: '操作系统', value: 'Ubuntu 22.04'},
-    {label: 'node.js 版本', value: '20.18.0'},
-])
-
-const systemLoad = ref([
-    {label: 'CPU', value: 56, total: 100},
-    {label: '内存', value: 68, total: 128},
-    {label: '存储', value: 44, total: 512}
-])
-
+const systemInfo = ref([])
+const systemLoad = ref([])
 const llmStats = ref([
-    {label: '请求总数', value: '12,843'},
-    {label: '成功率', value: '98.4%'},
-    {label: 'Token 消耗', value: '1.2M'},
+    { label: '请求总数', value: '12,843' },
+    { label: '成功率', value: '98.4%' },
+    { label: 'Token 消耗', value: '1.2M' },
 ])
 
 onMounted(async () => {
     try {
-        systemInfo.value[0].value = await getHello()
+        const data = await getSystemDashboard()
+        systemInfo.value = data.overview ?? []
+        systemLoad.value = data.load ?? []
     } catch (err) {
-        console.error('获取问候信息失败:', err)
+        console.error('获取系统信息失败:', err)
     }
 })
 </script>
@@ -86,16 +78,18 @@ onMounted(async () => {
                         class="load-card"
                     >
                         <el-progress
-                            :percentage="item.value"
+                            :percentage="item.percentage"
                             :stroke-width="8"
                             :width="140"
                             color="#3a7afe"
                             type="circle"
                         >
-                            <span class="percentage-value">{{ item.value }}%</span>
+                            <span class="percentage-value">{{ item.percentage }}%</span>
                             <span class="percentage-label">{{ item.label }}</span>
                         </el-progress>
-                        <div class="load-label">{{ item.value }} / {{ item.total }}</div>
+                        <div class="load-label">
+                            {{ item.used }} {{ item.unit }} / {{ item.total }} {{ item.unit }}
+                        </div>
                     </el-col>
                 </el-row>
             </el-card>
