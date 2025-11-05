@@ -7,7 +7,7 @@ export const getHello = (req, res) => {
 }
 
 // 返回系统信息
-export const getSystemInfoController = (req, res) => {
+export const getSystemStatus = (req, res) => {
     const systemInfo = getSystemInfo()
     res.json(systemInfo)
 }
