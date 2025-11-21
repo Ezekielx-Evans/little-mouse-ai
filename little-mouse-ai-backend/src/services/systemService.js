@@ -14,6 +14,8 @@ import { getDiskInfoSync } from 'node-disk-info'
  */
 export const getHelloMessage = () => 'Hello World !'
 
+
+
 /**
  * 获取每个 CPU 核心的使用率（百分比）。
  *
@@ -48,6 +50,8 @@ export const getCpuCoreUsage = async () => {
     })
 }
 
+
+
 /**
  * 获取系统信息概览。
  *
@@ -62,25 +66,19 @@ export const getCpuCoreUsage = async () => {
  * //   version: "1.0.0",
  * //   platform: "win32",
  * //   nodeVersion: "v22.19.0",
- * //   cpuUsagePerCore: [
- * //     { core: 0, usage: 23.47 },
- * //     { core: 1, usage: 0.00 },
- * //     { core: 2, usage: 18.33 }
- * //   ],
+ * //   cpuName: "Intel(R) Core(TM) i7-12700H",
+ * //   cpuUsagePerCore: [...],
  * //   memory: {
- * //     total: 34038341632,
- * //     free: 19089436672
+ * //     totalGB: 31.72,
+ * //     freeGB: 17.79
  * //   },
- * //   storage: [
- * //     {
+ * //   storage: {
  * //       filesystem: "Local Fixed Disk",
  * //       mounted: "C:",
- * //       total: 914840612864,
- * //       used: 389107511296,
- * //       available: 525733101568,
+ * //       totalGB: 851.74,
+ * //       usedGB: 362.39,
  * //       capacity: "43%"
- * //     }
- * //   ]
+ * //   }
  * // }
  */
 export const getSystemInfo = async () => {
@@ -93,21 +91,40 @@ export const getSystemInfo = async () => {
     } catch {}
 
     // 2. CPU、内存、磁盘信息
-    const cpuUsagePerCore = await getCpuCoreUsage()
-    const totalMem = os.totalmem()
-    const freeMem = os.freemem()
 
-    let storage = []
+    // 获取 CPU 信息
+    const cpuUsagePerCore = await getCpuCoreUsage()
+    const cpuName = os.cpus()[0]?.model || 'unknown'
+
+    // 获取内存信息，单位改为 GB
+    const totalGB = Number((os.totalmem() / 1024 ** 3).toFixed(2))
+    const freeGB = Number((os.freemem() / 1024 ** 3).toFixed(2))
+
+    // 获取项目运行所在分区磁盘信息
+    let storage = null
     try {
         const disks = getDiskInfoSync()
-        storage = disks.map(disk => ({
-            filesystem: disk.filesystem,
-            mounted: disk.mounted,
-            total: disk.blocks,
-            used: disk.used,
-            available: disk.available,
-            capacity: disk.capacity
-        }))
+        const cwd = process.cwd()
+        const root = path.parse(cwd).root // Windows: 'C:\\' Linux: '/'
+
+        // 仅获取项目运行所在分区
+        let currentDisk = null
+        if (process.platform === 'win32') {
+            const drive = root.slice(0, 2).toUpperCase()
+            currentDisk = disks.find(d => (d.mounted || '').toUpperCase().startsWith(drive))
+        } else {
+            currentDisk = disks.find(d => cwd.startsWith(d.mounted))
+        }
+
+        if (currentDisk) {
+            storage = {
+                filesystem: currentDisk.filesystem,
+                mounted: currentDisk.mounted,
+                totalGB: Number((currentDisk.blocks / 1024 ** 3).toFixed(2)),
+                usedGB: Number((currentDisk.used / 1024 ** 3).toFixed(2)),
+                capacity: currentDisk.capacity
+            }
+        }
     } catch (err) {
         console.error('磁盘信息获取失败:', err)
     }
@@ -117,8 +134,9 @@ export const getSystemInfo = async () => {
         version,
         platform: os.platform(),
         nodeVersion: process.version,
+        cpuName,
         cpuUsagePerCore,
-        memory: { total: totalMem, free: freeMem },
+        memory: { totalGB, freeGB },
         storage
     }
 }

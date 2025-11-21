@@ -1,34 +1,95 @@
 <script setup>
-import {onMounted, ref} from 'vue'
+import {onBeforeUnmount, onMounted, ref} from 'vue'
+import {getSystemInfo} from '@/api/systemApi.js'
 
-import {getHello} from '@/api/systemApi.js'
-
-const systemInfo = ref([
-    {label: 'Mouse AI', value: 'v1.0.0'},
-    {label: '操作系统', value: 'Ubuntu 22.04'},
-    {label: 'node.js 版本', value: '20.18.0'},
-])
-
-const systemLoad = ref([
-    {label: 'CPU', value: 56, total: 100},
-    {label: '内存', value: 68, total: 128},
-    {label: '存储', value: 44, total: 512}
-])
-
+// 定义展示数据
+const systemInfo = ref([])
+const systemLoad = ref([])
 const llmStats = ref([
     {label: '请求总数', value: '12,843'},
     {label: '成功率', value: '98.4%'},
     {label: 'Token 消耗', value: '1.2M'},
 ])
 
-onMounted(async () => {
-    try {
-        systemInfo.value[0].value = await getHello()
-    } catch (err) {
-        console.error('获取问候信息失败:', err)
-    }
+// 定义第一次获取数据时的加载状态
+const loading = ref(true)
+
+// 定义定时器
+let timer = null
+
+onMounted(() => {
+    // 进入页面加载一次数据
+    loadData()
+    // 每 4 秒加载一次
+    timer = setInterval(loadData, 3000)
 })
+
+onBeforeUnmount(() => {
+    // 切换页面时销毁定时器，防止内存泄漏
+    clearInterval(timer)
+})
+
+async function loadData() {
+    const data = await getSystemInfo()
+
+    systemInfo.value = [
+        {label: '版本', value: data.version},
+        {label: '操作系统', value: data.platform},
+        {label: 'Node.js 版本', value: data.nodeVersion},
+        {label: 'CPU 型号', value: data.cpuName},
+    ]
+
+    systemLoad.value = [
+        {
+            label: 'CPU',
+            value: getUsedCpuCores(data.cpuUsagePerCore),
+            total: data.cpuUsagePerCore.length,
+            unit: '核',
+            percent: getCpuAverage(data.cpuUsagePerCore),
+        },
+        {
+            label: '内存',
+            value: (data.memory.totalGB - data.memory.freeGB).toFixed(2),
+            total: data.memory.totalGB,
+            unit: 'GB',
+            percent: getMemoryUsage(data.memory),
+        },
+        {
+            label: '存储',
+            value: data.storage.usedGB.toFixed(2),
+            total: data.storage.totalGB,
+            unit: 'GB',
+            percent: Number(data.storage.capacity.replace('%', '')),
+        },
+    ]
+
+    // 第一次加载完成后关闭 loading
+    if (loading.value) loading.value = false
+}
+
+// 计算已使用的 CPU 核数
+function getUsedCpuCores(list) {
+    // 平均使用率 %
+    const avgPercent = getCpuAverage(list)
+    // 核心数
+    const coreCount = list.length
+    return Number((avgPercent / 100 * coreCount).toFixed(2))
+}
+
+// 计算 CPU 平均占用率
+function getCpuAverage(cpuList) {
+    if (!cpuList?.length) return 0
+    const sum = cpuList.reduce((total, current) => total + current.usage, 0)
+    return Number((sum / cpuList.length).toFixed(0))
+}
+
+// 计算内存使用率
+function getMemoryUsage(memory) {
+    const used = memory.totalGB - memory.freeGB
+    return Number(((used / memory.totalGB) * 100).toFixed(0))
+}
 </script>
+
 
 <template>
 
@@ -45,7 +106,7 @@ onMounted(async () => {
             </el-card>
 
             <!-- 系统信息卡片 -->
-            <el-card class="card">
+            <el-card v-loading="loading" class="card">
                 <template #header>
                     <div class="card-header">
                         <span class="decor"></span>
@@ -56,7 +117,7 @@ onMounted(async () => {
                     <el-col
                         v-for="item in systemInfo"
                         :key="item.label"
-                        :md="8"
+                        :md="6"
                         :sm="12"
                         :xs="12"
                     >
@@ -69,7 +130,7 @@ onMounted(async () => {
             </el-card>
 
             <!-- 系统负荷卡片 -->
-            <el-card class="card">
+            <el-card v-loading="loading" class="card">
                 <template #header>
                     <div class="card-header">
                         <span class="decor"></span>
@@ -86,22 +147,25 @@ onMounted(async () => {
                         class="load-card"
                     >
                         <el-progress
-                            :percentage="item.value"
+                            :percentage="item.percent"
                             :stroke-width="8"
                             :width="140"
                             color="#3a7afe"
                             type="circle"
                         >
-                            <span class="percentage-value">{{ item.value }}%</span>
+                            <span class="percentage-value">{{ item.percent }}%</span>
                             <span class="percentage-label">{{ item.label }}</span>
                         </el-progress>
-                        <div class="load-label">{{ item.value }} / {{ item.total }}</div>
+                        <div class="load-label">{{ item.value }} {{ item.unit }} / {{ item.total }} {{
+                                item.unit
+                            }}
+                        </div>
                     </el-col>
                 </el-row>
             </el-card>
 
             <!-- LLM 统计卡片 -->
-            <el-card class="card">
+            <el-card v-loading="loading" class="card">
                 <template #header>
                     <div class="card-header">
                         <span class="decor"></span>

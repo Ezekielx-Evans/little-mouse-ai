@@ -1,5 +1,5 @@
 import express from 'express'
-import { getHello, getSystemStatus } from '../controllers/systemController.js'
+import { getHello, getInfo } from '../controllers/systemController.js'
 
 const router = express.Router()
 
@@ -7,7 +7,7 @@ const router = express.Router()
 router.get('/helloworld', getHello)
 
 // 系统信息接口
-router.get('/info', getSystemStatus)
+router.get('/info', getInfo)
 
 
 export default router

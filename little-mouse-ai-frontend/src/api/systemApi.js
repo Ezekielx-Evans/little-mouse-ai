@@ -7,7 +7,7 @@ export const getHello = async () => {
 }
 
 // 获取系统信息
-export const getSystemStatus = async () => {
-    const res = await instance.get('/system/status')
+export const getSystemInfo = async () => {
+    const res = await instance.get('/system/info')
     return res.data
 }

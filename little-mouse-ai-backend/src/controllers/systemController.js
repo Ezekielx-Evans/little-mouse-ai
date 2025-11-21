@@ -7,7 +7,7 @@ export const getHello = (req, res) => {
 }
 
 // 返回系统信息
-export const getSystemStatus = async (req, res) => {
+export const getInfo = async (req, res) => {
     const systemInfo = await getSystemInfo()
     res.json(systemInfo)
 }
