@@ -12,19 +12,15 @@ const getConfigs = () => {
         {
             id: 'model-001',
             name: '测试模型1',
-            enabled: true,
             baseUrl: 'https://api.deepseek.com/v1',
             apiKey: 'sk-15c040979d3e4b26abae62b09d3adfd5',
-            model: 'deepseek-chat',
             image: '/src/assets/images/deepseek.png',
         },
         {
             id: 'model-002',
             name: '测试模型2',
-            enabled: false,
             baseUrl: 'https://api.deepseek.com/v1',
             apiKey: '',
-            model: 'deepseek-reasoner',
             image: '/src/assets/images/deepseek.png',
         },
     )
@@ -56,10 +52,8 @@ const handleAdd = () => {
     configs.value.push({
         id,
         name,
-        enabled: false,
         baseUrl: 'https://api.deepseek.com/v1',
         apiKey: '',
-        model: 'deepseek-chat',
         image,
     })
 
@@ -186,9 +180,6 @@ onMounted(() => {
                                     <el-image :src="item.image" fit="cover"/>
                                     <div class="config-content">
                                         <div class="config-name">{{ item.name }}</div>
-                                        <el-tag :type="item.enabled ? 'success' : 'info'" size="small">
-                                            {{ item.enabled ? '运行中' : '已停用' }}
-                                        </el-tag>
                                     </div>
                                 </div>
                                 <div class="config-actions">
@@ -226,15 +217,6 @@ onMounted(() => {
                                               placeholder="请输入模型名称"/>
                                 </el-form-item>
 
-                                <el-form-item label="开启">
-                                    <el-switch
-                                        v-model="currentConfig.enabled"
-                                        :disabled="isDisabled"
-                                        active-color="#67C23A"
-                                        inactive-color="#909399"
-                                    />
-                                </el-form-item>
-
                                 <el-form-item label="Base URL" prop="baseUrl">
                                     <el-input v-model="currentConfig.baseUrl" :disabled="true"
                                               placeholder="请输入 Base URL"/>
@@ -243,14 +225,6 @@ onMounted(() => {
                                 <el-form-item label="API Key" prop="apiKey">
                                     <el-input v-model="currentConfig.apiKey" :disabled="isDisabled"
                                               placeholder="请输入 API Key"/>
-                                </el-form-item>
-
-                                <el-form-item label="模型" prop="model">
-                                    <el-select v-model="currentConfig.model" :disabled="isDisabled"
-                                               placeholder="请选择模型">
-                                        <el-option label="deepseek-chat" value="deepseek-chat"/>
-                                        <el-option label="deepseek-reasoner" value="deepseek-reasoner"/>
-                                    </el-select>
                                 </el-form-item>
 
                                 <el-form-item>

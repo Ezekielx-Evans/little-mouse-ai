@@ -12,7 +12,6 @@ const getConfigs = () => {
     configs.value.push({
             id: 'bot-001',
             name: '客服助手',
-            enabled: true,
             appId: 'APP-202401',
             appSecret: 'SECRET-58FJ2',
             token: 'TOKEN-91XZ3',
@@ -22,7 +21,6 @@ const getConfigs = () => {
         {
             id: 'bot-002',
             name: '销售助理',
-            enabled: false,
             appId: '',
             appSecret: '',
             token: '',
@@ -55,7 +53,6 @@ const handleAdd = () => {
     configs.value.push({
         id,
         name,
-        enabled: false,
         appId: '',
         appSecret: '',
         token: '',
@@ -229,9 +226,6 @@ onMounted(() => {
                                     <el-image :src="item.image" fit="cover"/>
                                     <div class="config-content">
                                         <div class="config-name">{{ item.name }}</div>
-                                        <el-tag :type="item.enabled ? 'success' : 'info'" size="small">
-                                            {{ item.enabled ? '运行中' : '已停用' }}
-                                        </el-tag>
                                     </div>
                                 </div>
 
@@ -269,16 +263,6 @@ onMounted(() => {
                                 <el-form-item label="名称" prop="name">
                                     <el-input v-model="currentConfig.name" :disabled="isDisabled"
                                               placeholder="请输入机器人名称"/>
-                                </el-form-item>
-
-                                <!-- 开启按钮 -->
-                                <el-form-item label="开启">
-                                    <el-switch
-                                        v-model="currentConfig.enabled"
-                                        :disabled="isDisabled"
-                                        active-color="#67C23A"
-                                        inactive-color="#909399"
-                                    />
                                 </el-form-item>
 
                                 <!-- App ID -->
