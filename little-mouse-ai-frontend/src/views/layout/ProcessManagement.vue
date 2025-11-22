@@ -14,14 +14,14 @@ const isDisabled = ref(true)
 
 // 模板类型
 const templateTypeOptions = ref([
-    {value: 'AITemplate', label: '角色模板'},
+    {value: 'roleTemplate', label: '角色模板'},
     {value: 'functionTemplate', label: '功能模板'},
 ])
 
 // 模板选项
 const templateOptions = ref({
-    AITemplate: [
-        {value: 'ai-custom', label: '自定义角色'},
+    roleTemplate: [
+        {value: 'role-custom', label: '自定义角色'},
         {value: 'catgirl', label: '猫娘'},
     ],
     functionTemplate: [
@@ -35,7 +35,7 @@ const templateOptions = ref({
 const currentTemplateOptions = computed(() => {
     // 获取当前配置模板类型
     const type = currentConfig.value?.templateType
-    // type ? ... : [] -- 如果 type 有值（比如 "AITemplate"），就执行 ...，否则直接返回 []
+    // type ? ... : [] -- 如果 type 有值（比如 "roleTemplate"），就执行 ...，否则直接返回 []
     // templateOptions.value[type] ?? [] -- 从 templateOptions 中取当前模板种类中的模板。如果取不到（是 null 或 undefined），就返回空数组 []。
     return type ? templateOptions.value[type] ?? [] : []
 })
@@ -71,8 +71,7 @@ const getConfigs = () => {
             id: 'process-001',
             name: '猫娘',
             enabled: true,
-            // 新增：区分模板类型
-            templateType: 'AITemplate',
+            templateType: 'roleTemplate',
             template: 'catgirl',
             botId: 'bot-001',
             modelId: 'deepseek-chat',
@@ -85,7 +84,6 @@ const getConfigs = () => {
             id: 'process-002',
             name: '小助手',
             enabled: false,
-            // 新增：区分模板类型
             templateType: 'functionTemplate',
             template: 'life_assistant',
             botId: 'bot-002',
@@ -99,7 +97,6 @@ const getConfigs = () => {
             id: 'process-003',
             name: '三角洲行动游戏助手',
             enabled: true,
-            // 新增：区分模板类型
             templateType: 'functionTemplate',
             template: 'delta_force_assistant',
             botId: 'bot-003',
@@ -131,8 +128,8 @@ const handleAdd = () => {
         name: `新建流程 ${index}`,
         enabled: false,
         // 新增：新建流程默认使用 AI 自定义模板
-        templateType: 'AITemplate',
-        template: 'ai-custom',
+        templateType: 'roleTemplate',
+        template: 'role-custom',
         botId: defaultBot,
         modelId: defaultModel,
         triggerCommand: `/flow${index}`,
@@ -210,28 +207,28 @@ const rules = ref({
 })
 
 // 根据模板类型控制字段可见性与可编辑性
-// 判断模板类型是否为 AiTemplate
-const isAiTemplate = computed(() => currentConfig.value?.templateType === 'AITemplate')
+// 判断模板类型是否为 roleTemplate
+const isRoleTemplate = computed(() => currentConfig.value?.templateType === 'roleTemplate')
 // 判断模板类型是否为 functionTemplate
 const isFunctionTemplate = computed(() => currentConfig.value?.templateType === 'functionTemplate')
-/// 如果模板是 AiTemplate，不显示 触发命令 输入框
-const showTriggerField = computed(() => !isAiTemplate.value)
-// 如果模板是 AiTemplate，不显示 代码注入 输入框
-const showCodeField = computed(() => !isAiTemplate.value)
+/// 如果模板是 roleTemplate，不显示 触发命令 输入框
+const showTriggerField = computed(() => !isRoleTemplate.value)
+// 如果模板是 roleTemplate，不显示 代码注入 输入框
+const showCodeField = computed(() => !isRoleTemplate.value)
 // 如果模板是 functionTemplate，不显示 模型 输入框
 const showModelField = computed(() => !isFunctionTemplate.value)
-// 如果模板是 AiTemplate，显示 角色描述 输入框
-const showRoleField = computed(() => isAiTemplate.value)
-// 如果模板是 AiTemplate 并且选择的是 "自定义角色(ai-custom)"，角色描述可编辑
+// 如果模板是 roleTemplate，显示 角色描述 输入框
+const showRoleField = computed(() => isRoleTemplate.value)
+// 如果模板是 roleTemplate 并且选择的是 "自定义角色(role-custom)"，角色描述可编辑
 const isRoleEditable = computed(() =>
-    isAiTemplate.value && currentConfig.value?.template === 'ai-custom'
+    isRoleTemplate.value && currentConfig.value?.template === 'role-custom'
 )
 // 如果模板是 functionTemplate 并且选择的是 "自定义功能(function-custom)"，代码注入可编辑
 const isCodeEditable = computed(() =>
     isFunctionTemplate.value && currentConfig.value?.template === 'function-custom'
 )
 
-// 监听模板类型变化，当模板从 AiTemplate 切换到 functionTemplate 时自动获取切换后模板的第一个值
+// 监听模板类型变化，当模板从 roleTemplate 切换到 functionTemplate 时自动获取切换后模板的第一个值
 watch(() => currentConfig.value?.templateType, (type) => {
     // 如果当前配置为空，或者模板类型为空，就直接退出
     if (!currentConfig.value || !type) return
@@ -462,7 +459,7 @@ onMounted(() => {
                                         placeholder="请输入 AI 扮演角色"
                                         type="textarea"
                                     />
-                                    <div v-if="isAiTemplate && currentConfig.template !== 'ai-custom'" class="field-tip">
+                                    <div v-if="isRoleTemplate && currentConfig.template !== 'role-custom'" class="field-tip">
                                         仅自定义角色模板支持修改角色描述
                                     </div>
                                 </el-form-item>
