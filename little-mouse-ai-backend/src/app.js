@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import routes from './routes/index.js'
+import {connectDB} from "./configs/db.js";
 
 const app = express()
 const port = 3000
@@ -12,6 +13,9 @@ app.use(cors({
 
 // 解析前端发送的 JSON 数据
 app.use(express.json())
+
+// 连接数据库
+await connectDB()
 
 // 挂载路由
 app.use(routes)
