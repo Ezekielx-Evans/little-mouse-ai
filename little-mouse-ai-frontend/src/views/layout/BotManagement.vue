@@ -3,30 +3,33 @@
 import {Delete, Edit, Plus} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {computed, onMounted, ref} from "vue";
+import {deleteBotConfig, getBotConfigList, saveBotConfig} from "@/api/botApi.js";
+
+// 定义第一次获取数据时的加载状态
+const loading = ref(true)
 
 // 配置文件列表
 const configs = ref([])
 
 // 获取配置文件
-const getConfigs = () => {
-    configs.value.push({
-            id: 'bot-001',
-            name: '客服助手',
-            appId: 'APP-202401',
-            appSecret: 'SECRET-58FJ2',
-            token: 'TOKEN-91XZ3',
-            sandbox: true,
-            image: '/src/assets/images/little-mouse.png',
-        },
-        {
-            id: 'bot-002',
-            name: '销售助理',
-            appId: '',
-            appSecret: '',
-            token: '',
-            sandbox: true,
-            image: '/src/assets/images/little-mouse.png',
-        },)
+const getConfigs = async () => {
+    try {
+        const res = await getBotConfigList()
+
+        // 后端成功响应格式：{ success: true, data: [...] }
+        if (res.success) {
+            configs.value = res.data
+
+        } else {
+            ElMessage.error('获取配置列表失败')
+        }
+
+    } catch (err) {
+        console.error(err)
+        ElMessage.error('获取配置列表失败')
+    } finally {
+        loading.value = false
+    }
 }
 
 
@@ -77,18 +80,33 @@ const handleDelete = (config) => {
         cancelButtonText: '取消',
         type: 'warning',
     })
-        .then(() => {
-            const index = configs.value.findIndex((item) => item.id === config.id)
-            if (index !== -1) {
-                configs.value.splice(index, 1)
-                if (selectedId.value === config.id) {
-                    selectedId.value = configs.value[0]?.id ?? ''
+        .then(async () => {
+            try {
+
+                loading.value = true
+
+                const res = await deleteBotConfig(config.id)
+
+                if (res.success) {
+                    ElMessage.success('删除成功')
+
+                    // 刷新列表
+                    await getConfigs()
+
+                    // 更新选中项
+                    selectedId.value = ''
+                    currentConfig.value = null
+                } else {
+                    ElMessage.error(res.message || '删除失败')
                 }
-                ElMessage.success('删除成功')
+            } catch (err) {
+                console.error(err)
+                ElMessage.error('删除失败：' + err.message)
+            } finally {
+                loading.value = false
             }
         })
-        .catch(() => {
-        })
+        .catch(() => {})
 }
 
 // 是否允许编辑配置
@@ -106,10 +124,10 @@ const configFormRef = ref()
 // 表单校验规则
 const rules = ref({
     name: [
-        { required: true, message: '名称不能为空！', trigger: 'blur' },
+        {required: true, message: '名称不能为空！', trigger: 'blur'},
     ],
     appId: [
-        { required: true, message: 'App ID 不能为空！', trigger: 'blur' },
+        {required: true, message: 'App ID 不能为空！', trigger: 'blur'},
         {
             validator: (rule, value, callback) => {
                 const reg = /^[0-9]+$/; // 纯数字
@@ -125,14 +143,14 @@ const rules = ref({
         }
     ],
     appSecret: [
-        { required: true, message: 'App Secret 不能为空！', trigger: 'blur' },
+        {required: true, message: 'App Secret 不能为空！', trigger: 'blur'},
         {
             validator: (rule, value, callback) => {
                 const reg = /^[A-Za-z0-9]{32}$/; // 32位字母数字
                 if (!value) {
                     callback(new Error('App Secret 不能为空！'))
                 } else if (!reg.test(value)) {
-                    callback(new Error('App Secret 为32位字母数字组合！'))
+                    callback(new Error('App Secret 为 32 位字母数字组合！'))
                 } else {
                     callback()
                 }
@@ -141,14 +159,14 @@ const rules = ref({
         }
     ],
     token: [
-        { required: true, message: 'Token 不能为空！', trigger: 'blur' },
+        {required: true, message: 'Token 不能为空！', trigger: 'blur'},
         {
             validator: (rule, value, callback) => {
                 const reg = /^[A-Za-z0-9]{32}$/; // 32位字母数字
                 if (!value) {
                     callback(new Error('Token 不能为空！'))
                 } else if (!reg.test(value)) {
-                    callback(new Error('Token 为32位字母数字组合！'))
+                    callback(new Error('Token 为 32 位字母数字组合！'))
                 } else {
                     callback()
                 }
@@ -159,14 +177,38 @@ const rules = ref({
 })
 
 // 保存表单
-const submitForm = (formRef) => {
-    if (!formRef) return
-    formRef.validate((valid) => {
-        if (valid) {
-            isDisabled.value = true
-            ElMessage.success('保存成功')
-        } else {
+const submitForm = async (formRef) => {
+    if (!formRef || !currentConfig.value) return
+
+    formRef.validate(async (valid) => {
+        if (!valid) {
             ElMessage.error('请检查表单输入是否正确！')
+            return
+        }
+
+        try {
+            loading.value = true
+
+            const res = await saveBotConfig(currentConfig.value)
+
+            if (res.success) {
+                ElMessage.success('保存成功')
+
+                isDisabled.value = true
+
+                // 保存成功后刷新列表
+                await getConfigs()
+
+                // 重新选中为保存的配置
+                selectedId.value = currentConfig.value.id
+            } else {
+                ElMessage.error(res.message || '保存失败')
+            }
+        } catch (err) {
+            console.error(err)
+            ElMessage.error('保存失败：' + err.message)
+        } finally {
+            loading.value = false
         }
     })
 }
@@ -197,7 +239,7 @@ onMounted(() => {
             </el-card>
 
             <!-- 配置信息卡片 -->
-            <el-card class="card">
+            <el-card class="card" v-loading="loading">
                 <div class="bot-layout">
 
                     <!-- 左侧配置列表 -->
