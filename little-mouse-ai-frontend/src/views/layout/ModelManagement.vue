@@ -2,28 +2,33 @@
 import {Delete, Edit, Plus} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {onMounted, ref} from "vue"
+import {deleteModelConfig, getModelConfigList, saveModelConfig} from "@/api/modelApi.js";
+
+// 定义第一次获取数据时的加载状态
+const loading = ref(true)
 
 // 配置文件列表
 const configs = ref([])
 
 // 获取配置文件
-const getConfigs = () => {
-    configs.value.push(
-        {
-            id: 'model-001',
-            name: '测试模型1',
-            baseUrl: 'https://api.deepseek.com/v1',
-            apiKey: 'sk-15c040979d3e4b26abae62b09d3adfd5',
-            image: '/src/assets/images/deepseek.png',
-        },
-        {
-            id: 'model-002',
-            name: '测试模型2',
-            baseUrl: 'https://api.deepseek.com/v1',
-            apiKey: '',
-            image: '/src/assets/images/deepseek.png',
-        },
-    )
+const getConfigs = async () => {
+    try {
+        const res = await getModelConfigList()
+
+        // 后端成功响应格式：{ success: true, data: [...] }
+        if (res.success) {
+            configs.value = res.data
+
+        } else {
+            ElMessage.error('获取配置列表失败')
+        }
+
+    } catch (err) {
+        console.error(err)
+        ElMessage.error('获取配置列表失败')
+    } finally {
+        loading.value = false
+    }
 }
 
 // 当前选中的配置ID
@@ -67,22 +72,37 @@ const handleEdit = (item) => {
     ElMessage.success(`正在编辑「${item.name}」`)
 }
 
-// 删除配置
+// 删除配置时的行为
 const handleDelete = (config) => {
     ElMessageBox.confirm(`确认删除「${config.name}」吗？`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
     })
-        .then(() => {
-            const index = configs.value.findIndex((item) => item.id === config.id)
-            if (index !== -1) {
-                configs.value.splice(index, 1)
-                if (selectedId.value === config.id) {
-                    selectedId.value = configs.value[0]?.id ?? ''
-                    currentConfig.value = configs.value[0] ?? null
+        .then(async () => {
+            try {
+
+                loading.value = true
+
+                const res = await deleteModelConfig(config.id)
+
+                if (res.success) {
+                    ElMessage.success('删除成功')
+
+                    // 刷新列表
+                    await getConfigs()
+
+                    // 更新选中项
+                    selectedId.value = ''
+                    currentConfig.value = null
+                } else {
+                    ElMessage.error(res.message || '删除失败')
                 }
-                ElMessage.success('删除成功')
+            } catch (err) {
+                console.error(err)
+                ElMessage.error('删除失败：' + err.message)
+            } finally {
+                loading.value = false
             }
         })
         .catch(() => {
@@ -123,14 +143,38 @@ const rules = ref({
 })
 
 // 保存表单
-const submitForm = (formRef) => {
-    if (!formRef) return
-    formRef.validate((valid) => {
-        if (valid) {
-            isDisabled.value = true
-            ElMessage.success('保存成功')
-        } else {
+const submitForm = async (formRef) => {
+    if (!formRef || !currentConfig.value) return
+
+    formRef.validate(async (valid) => {
+        if (!valid) {
             ElMessage.error('请检查表单输入是否正确！')
+            return
+        }
+
+        try {
+            loading.value = true
+
+            const res = await saveModelConfig(currentConfig.value)
+
+            if (res.success) {
+                ElMessage.success('保存成功')
+
+                isDisabled.value = true
+
+                // 保存成功后刷新列表
+                await getConfigs()
+
+                // 重新选中为保存的配置
+                selectedId.value = currentConfig.value.id
+            } else {
+                ElMessage.error(res.message || '保存失败')
+            }
+        } catch (err) {
+            console.error(err)
+            ElMessage.error('保存失败：' + err.message)
+        } finally {
+            loading.value = false
         }
     })
 }
@@ -157,7 +201,7 @@ onMounted(() => {
                 </div>
             </el-card>
 
-            <el-card class="card">
+            <el-card v-loading="loading" class="card">
                 <div class="model-layout">
                     <!-- 左侧配置列表 -->
                     <div class="list-panel">

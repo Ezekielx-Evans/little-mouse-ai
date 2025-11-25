@@ -106,7 +106,8 @@ const handleDelete = (config) => {
                 loading.value = false
             }
         })
-        .catch(() => {})
+        .catch(() => {
+        })
 }
 
 // 是否允许编辑配置
@@ -239,7 +240,7 @@ onMounted(() => {
             </el-card>
 
             <!-- 配置信息卡片 -->
-            <el-card class="card" v-loading="loading">
+            <el-card v-loading="loading" class="card">
                 <div class="bot-layout">
 
                     <!-- 左侧配置列表 -->

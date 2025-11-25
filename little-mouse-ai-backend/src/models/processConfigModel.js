@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const processConfigSchema = new mongoose.Schema({
-    id: {type: String, unique: true},
+    id: {type: String, unique: true, required: true},
     name: String,
     enabled: Boolean,
     templateType: String,
