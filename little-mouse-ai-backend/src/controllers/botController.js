@@ -13,12 +13,11 @@ import {deleteBotConfigById, getBotConfigList, saveBotConfig} from "../services/
  * POST /bot/save
  * {
  *   "id": "bot-001",
- *   "name": "客服助手",
  *   "appId": "APP-202401",
  *   "appSecret": "SECRET-58FJ2",
- *   "token": "TOKEN-91XZ3",
- *   "sandbox": true,
- *   "image": "/src/assets/images/little-mouse.png"
+ *   "image": "/src/assets/images/little-mouse.png",
+ *   "name": "客服助手",
+ *   "token": "TOKEN-91XZ3"
  * }
  */
 export const saveConfig = async (req, res) => {
@@ -57,7 +56,6 @@ export const saveConfig = async (req, res) => {
  *       "_id": "6923106e69af27de2177056a",
  *       "id": "bot-001",
  *       "name": "客服助手",
- *       "sandbox": true,
  *       ...
  *     },
  *     ...
@@ -130,4 +128,3 @@ export const deleteConfig = async (req, res) => {
         });
     }
 };
-

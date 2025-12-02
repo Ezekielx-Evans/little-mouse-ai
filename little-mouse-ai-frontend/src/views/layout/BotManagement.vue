@@ -59,7 +59,6 @@ const handleAdd = () => {
         appId: '',
         appSecret: '',
         token: '',
-        sandbox: true,
         image,
     })
 
@@ -114,7 +113,7 @@ const handleDelete = (config) => {
 const isDisabled = ref(true)
 
 // 生成回调地址的函数
-const generateCallbackUrl = (id) => `https://<网页地址>/bots/${id}/callback`
+const generateCallbackUrl = (id) => `https://<网页地址>/webhook/callback/${id}`
 
 // 实时更新回调地址，如果没有则调用生成函数
 const callbackUrl = computed(() => (currentConfig.value ? generateCallbackUrl(currentConfig.value.id) : ''))
@@ -324,16 +323,6 @@ onMounted(() => {
                                 <el-form-item label="Token" prop="token">
                                     <el-input v-model="currentConfig.token" :disabled="isDisabled"
                                               placeholder="请输入 Token"/>
-                                </el-form-item>
-
-                                <!-- 沙盒环境 -->
-                                <el-form-item label="沙盒环境">
-                                    <el-switch
-                                        v-model="currentConfig.sandbox"
-                                        :disabled="isDisabled"
-                                        active-color="#67C23A"
-                                        inactive-color="#909399"
-                                    />
                                 </el-form-item>
 
                                 <!-- 回调 URL -->

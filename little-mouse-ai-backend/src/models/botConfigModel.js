@@ -6,7 +6,6 @@ const botConfigSchema = new mongoose.Schema({
     appId: String,
     appSecret: String,
     token: String,
-    sandbox: Boolean,
     image: String
 });
 

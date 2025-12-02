@@ -13,9 +13,12 @@ import BotConfig from '../models/botConfigModel.js'
  * @example
  * // 保存机器人配置（如果 id 存在则更新，否则新增）
  * await saveBotConfig({
- *   id: "bot-001",
- *   name: "客服助手",
- *   sandbox: true
+ *   "id": "bot-001",
+ *   "appId": "APP-202401",
+ *   "appSecret": "SECRET-58FJ2",
+ *   "image": "/src/assets/images/little-mouse.png",
+ *   "name": "客服助手",
+ *   "token": "TOKEN-91XZ3"
  * })
  */
 export async function saveBotConfig(data) {
@@ -45,14 +48,12 @@ export async function saveBotConfig(data) {
  * //     _id: "6923106e69af27de2177056a",
  * //     id: "bot-001",
  * //     name: "客服助手",
- * //     sandbox: true,
  * //     ...
  * //   },
  * //   {
  * //     _id: "6923106e69af27de21770987",
  * //     id: "bot-002",
  * //     name: "内容助手",
- * //     sandbox: false,
  * //     ...
  * //   }
  * // ]
