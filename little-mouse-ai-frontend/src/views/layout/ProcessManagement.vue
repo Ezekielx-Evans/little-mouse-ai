@@ -25,7 +25,6 @@ const templateOptions = ref({
         {value: 'catgirl', label: '猫娘'},
     ],
     functionTemplate: [
-        {value: 'function-custom', label: '自定义功能'},
         {value: 'life_assistant', label: '生活助手'},
         {value: 'delta_force_assistant', label: '三角洲游戏助手'},
     ],
@@ -76,7 +75,6 @@ const getConfigs = () => {
             botId: 'bot-001',
             modelId: 'deepseek-chat',
             triggerCommand: '',
-            codeInjection: '/* 自定义逻辑 */',
             role: '你是一只可爱活泼的猫娘，喜欢卖萌。',
             image: '/src/assets/images/mouse.png',
         },
@@ -89,7 +87,6 @@ const getConfigs = () => {
             botId: 'bot-002',
             modelId: 'deepseek-reasoner',
             triggerCommand: '/life_assistant',
-            codeInjection: '',
             role: '',
             image: '/src/assets/images/mouse.png',
         },
@@ -102,7 +99,6 @@ const getConfigs = () => {
             botId: 'bot-003',
             modelId: 'deepseek-chat',
             triggerCommand: '/delta_force_assistant',
-            codeInjection: '',
             role: '',
             image: '/src/assets/images/mouse.png',
         },
@@ -133,7 +129,6 @@ const handleAdd = () => {
         botId: defaultBot,
         modelId: defaultModel,
         triggerCommand: `/flow${index}`,
-        codeInjection: '',
         role: '',
         image: '/src/assets/images/mouse.png',
     }
@@ -213,8 +208,6 @@ const isRoleTemplate = computed(() => currentConfig.value?.templateType === 'rol
 const isFunctionTemplate = computed(() => currentConfig.value?.templateType === 'functionTemplate')
 /// 如果模板是 roleTemplate，不显示 触发命令 输入框
 const showTriggerField = computed(() => !isRoleTemplate.value)
-// 如果模板是 roleTemplate，不显示 代码注入 输入框
-const showCodeField = computed(() => !isRoleTemplate.value)
 // 如果模板是 functionTemplate，不显示 模型 输入框
 const showModelField = computed(() => !isFunctionTemplate.value)
 // 如果模板是 roleTemplate，显示 角色描述 输入框
@@ -222,10 +215,6 @@ const showRoleField = computed(() => isRoleTemplate.value)
 // 如果模板是 roleTemplate 并且选择的是 "自定义角色(role-custom)"，角色描述可编辑
 const isRoleEditable = computed(() =>
     isRoleTemplate.value && currentConfig.value?.template === 'role-custom'
-)
-// 如果模板是 functionTemplate 并且选择的是 "自定义功能(function-custom)"，代码注入可编辑
-const isCodeEditable = computed(() =>
-    isFunctionTemplate.value && currentConfig.value?.template === 'function-custom'
 )
 
 // 监听模板类型变化，当模板从 roleTemplate 切换到 functionTemplate 时自动获取切换后模板的第一个值
@@ -436,20 +425,6 @@ onMounted(() => {
                                     />
                                 </el-form-item>
 
-                                <!-- 代码注入 -->
-                                <el-form-item v-if="showCodeField" label="代码注入">
-                                    <el-input
-                                        v-model="currentConfig.codeInjection"
-                                        :autosize="{ minRows: 3 }"
-                                        :disabled="isDisabled || !isCodeEditable"
-                                        placeholder="请输入自定义代码"
-                                        type="textarea"
-                                    />
-                                    <div v-if="isFunctionTemplate && currentConfig.template !== 'function-custom'" class="field-tip">
-                                        仅自定义功能模板支持修改代码
-                                    </div>
-                                </el-form-item>
-
                                 <!-- 角色描述 -->
                                 <el-form-item v-if="showRoleField" label="角色描述" prop="role">
                                     <el-input
@@ -459,7 +434,8 @@ onMounted(() => {
                                         placeholder="请输入 AI 扮演角色"
                                         type="textarea"
                                     />
-                                    <div v-if="isRoleTemplate && currentConfig.template !== 'role-custom'" class="field-tip">
+                                    <div v-if="isRoleTemplate && currentConfig.template !== 'role-custom'"
+                                         class="field-tip">
                                         仅自定义角色模板支持修改角色描述
                                     </div>
                                 </el-form-item>
