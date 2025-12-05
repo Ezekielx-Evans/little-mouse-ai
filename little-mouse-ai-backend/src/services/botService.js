@@ -7,9 +7,6 @@ import BotConfig from '../models/botConfigModel.js'
  *
  * 返回更新后的配置。
  *
- * @async
- * @function saveBotConfig
- *
  * @example
  * // 保存机器人配置（如果 id 存在则更新，否则新增）
  * await saveBotConfig({
@@ -35,9 +32,6 @@ export async function saveBotConfig(data) {
  * 获取所有机器人配置列表。
  *
  * 返回数据库中全部机器人配置文档的数组。
- *
- * @async
- * @function getBotConfigList
  *
  * @example
  * // 获取机器人配置列表
@@ -66,9 +60,6 @@ export async function getBotConfigList() {
  * 通过传入的 id 删除机器人配置。
  *
  * 它返回一个包含 deletedCount 属性的对象，该属性指示已删除多少个文档。
- *
- * @async
- * @function deleteBotConfigById
  *
  * @example
  * // 根据 id 删除机器人配置

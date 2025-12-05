@@ -8,9 +8,6 @@ import ModelConfig from '../models/modelConfigModel.js'
  *
  * 返回更新后的配置。
  *
- * @async
- * @function saveModelConfig
- *
  * @example
  * // 保存大模型配置（如果 id 存在则更新，否则新增）
  * await saveModelConfig({
@@ -36,21 +33,18 @@ export async function saveModelConfig(data) {
  *
  * 返回数据库中全部大模型配置文档的数组。
  *
- * @async
- * @function getModelConfigList
- *
  * @example
  * const list = await getModelConfigList()
  * // 返回示例：
- * // [
- * //   {
- * //     _id: "6923106e69af27de21770111",
- * //     id: "deepseek-chat",
- * //     name: "DeepSeek Chat",
- * //     baseUrl: "https://api.deepseek.com/v1",
- * //     apiKey: "sk-15c040979d3e4b26abae62b09d3adfd5",
- * //   }
- * // ]
+ * [
+ *   {
+ *     _id: "6923106e69af27de21770111",
+ *     id: "deepseek-chat",
+ *     name: "DeepSeek Chat",
+ *     baseUrl: "https://api.deepseek.com/v1",
+ *     apiKey: "sk-15c040979d3e4b26abae62b09d3adfd5",
+ *   }
+ * ]
  */
 export async function getModelConfigList() {
     return ModelConfig.find();
@@ -60,9 +54,6 @@ export async function getModelConfigList() {
  * 根据传入的 id 删除大模型配置。
  *
  * 它返回一个包含 deletedCount 属性的对象，该属性指示已删除多少个文档。
- *
- * @async
- * @function deleteModelConfigById
  *
  * @example
  * await deleteModelConfigById("deepseek-chat")

@@ -1,59 +1,115 @@
 import axios from "axios"
-import vm from "vm"
 import fs from "fs/promises"
 import path from "path"
 import OpenAI from "openai"
 
-import BotConfig from "../models/botConfigModel.js"
 import ModelConfig from "../models/modelConfigModel.js"
 import ProcessConfig from "../models/processConfigModel.js"
 
-// 获取项目根目录的 template 目录路径：
-// 项目结构：/src 和 /template 同级，所以从 process.cwd() 指向项目根，再拼 template
+/**
+ * 保存流程配置（新增或更新）。
+ *
+ * 根据传入数据中的 `id` 字段判断是更新现有流程，
+ * 还是在不存在时创建新流程。
+ *
+ * 函数返回更新后的流程配置文档。
+ *
+ * @example
+ * // 保存流程（若 id 存在则更新，否则新增）
+ * await saveProcessConfig({
+ *   "id": "flow-001",
+ *   "name": "猫娘对话流程",
+ *   "enabled": true,
+ *   "templateType": "roleTemplate",
+ *   "template": "catgirl",
+ *   "botId": "bot-001",
+ *   "modelId": "deepseek-chat",
+ *   "triggerCommand": "",
+ *   "role": "你是一只可爱的猫娘",
+ *   "image": "/src/assets/images/catgirl.png"
+ * })
+ */
+export async function saveProcessConfig(data) {
+    const filter = { id: data.id }
+
+    // new: true 返回更新后的文档
+    // upsert: true 若未找到则插入新文档
+    const options = { new: true, upsert: true }
+
+    return ProcessConfig.findOneAndUpdate(filter, data, options)
+}
+
+/**
+ * 获取所有流程配置。
+ *
+ * 返回数据库中全部流程配置文档数组。
+ *
+ * @example
+ * const list = await getProcessConfigList()
+ * // 返回示例：
+ * // [
+ * //   {
+ * //     id: "flow-001",
+ * //     name: "猫娘对话流程",
+ * //     templateType: "roleTemplate",
+ * //     ...
+ * //   },
+ * //   {
+ * //     id: "flow-002",
+ * //     name: "战绩查询流程",
+ * //     templateType: "functionTemplate",
+ * //     ...
+ * //   }
+ * // ]
+ */
+export async function getProcessConfigList() {
+    return ProcessConfig.find()
+}
+
+/**
+ * 根据 id 删除流程配置。
+ *
+ * 返回一个包含 deletedCount 的对象，用于指示删除数量。
+ *
+ * @example
+ * await deleteProcessConfigById("flow-001")
+ * // 返回示例：{ deletedCount: 1 }
+ */
+export async function deleteProcessConfigById(id) {
+    const filter = { id }
+    return ProcessConfig.deleteOne(filter)
+}
+
+
+// 项目根路径下的 template 目录
 const TEMPLATE_ROOT = path.resolve(process.cwd(), "template")
 
-/**
- * 缓存 QQ 机器人 AccessToken：
- *
- * key: appId
- *
- * value: { token: string, expiresAt: number }
- */
+// AccessToken 内存缓存（appId → token）
 const tokenCache = new Map()
 
-/**
- * 缓存大模型客户端（OpenAI SDK 实例）：
- *
- * key: modelId
- *
- * value: OpenAI client
- */
+// 模型客户端缓存（modelId → OpenAI client）
 const modelClientCache = new Map()
 
 /**
- * 处理 QQ 群聊 @ 机器人事件入口。
+ * 处理 QQ 群聊中 @ 机器人的消息事件。
  *
- * 现在的规则：
- *  - 不再用命令做流程过滤，只根据 botId + enabled = true 取出所有流程
- *  - functionTemplate：可以有多个 → 逐个执行，每个结果发一条消息
- *  - roleTemplate：也可以有多个 → 逐个执行，每个结果发一条消息
+ * 此函数为 Webhook 消息处理入口，用于根据用户输入判断执行流程类型：
+ * - 若输入以 "/" 开头 → 视为命令，只执行 functionTemplate 流程。
+ * - 若输入为普通消息 → 执行所有 roleTemplate 流程。
  *
- * @example
- * case "GROUP_AT_MESSAGE_CREATE":
- *    await handleProcessEvent(botConfig, event);
- *    break;
+ * 执行顺序：
+ *   1. 从数据库中读取当前 botId 对应的所有启用流程。
+ *   2. 根据命令与否，选择执行功能模板或角色模板。
+ *   3. 每个流程的输出内容都会单独发送一条消息到群聊。
  *
- * @param {Object} botConfig - 当前机器人配置（来自 BotConfig）
- * @param {Object} event - Webhook 事件 body
- *
- * @returns {Promise<void>}
+ * @param {Object} botConfig - 机器人自身配置（含 appId 与密钥）
+ * @param {Object} event - QQ Webhook 事件体（包含消息、用户、群信息）
+ * @returns {Promise<void>} - 处理完成，不返回实际数据
  */
 export async function handleProcessEvent(botConfig, event) {
 
-    // 事件内容
     const d = event?.d ?? {}
 
-    // 用户真正发送来的消息
     const rawContent = typeof d.content === "string" ? d.content : ""
     const text = rawContent.trim()
 
@@ -65,18 +121,20 @@ export async function handleProcessEvent(botConfig, event) {
         return
     }
 
-    // 解析消息为命令还是普通聊天内容
     const {command, args} = parseCommandAndArgs(text)
     const botId = botConfig.id
-
-    // 查出启用的所有流程
     const {functionFlows, roleFlows} = await findAllProcessesForBot(botId)
 
-    // 如果是命令：只执行 functionTemplate
+    // 若是命令 → 只执行功能模板
     if (command) {
         for (const funcCfg of functionFlows) {
             try {
-                const result = await runFunctionTemplate(funcCfg, text, event, {command, args})
+                const result = await runFunctionTemplate(
+                    funcCfg,
+                    text,
+                    event,
+                    { command, args }
+                )
                 if (result && result.trim()) {
                     await sendGroupTextMessage(botConfig, groupOpenId, result.trim(), replyToMsgId)
                 }
@@ -87,7 +145,7 @@ export async function handleProcessEvent(botConfig, event) {
         return
     }
 
-    // 若不是命令：执行角色模板
+    // 非命令 → 执行角色模板
     for (const roleCfg of roleFlows) {
         try {
             const result = await runRoleTemplate(roleCfg, text)
@@ -101,16 +159,19 @@ export async function handleProcessEvent(botConfig, event) {
 }
 
 /**
- * 提取命令与参数
+ * 根据用户输入解析命令格式。
  *
- * 解析消息为命令还是普通聊天内容，例如：
- *    - "/战绩查询 放过善良小鼠鼠" -> { command: "/战绩查询", args: "放过善良小鼠鼠" }
- *    - "普通聊天内容"          -> { command: "", args: "普通聊天内容" }
+ * 解析规则：
+ *   - 以 "/" 开头的文本为命令，命令部分为第一个词，其余部分视为参数。
+ *   - 若不以 "/" 开头，则视为普通消息，命令为空字符串，参数为原始文本。
+ *
+ * @param {string} text - 用户原始输入文本
+ * @returns {{command: string, args: string}} - 解析后的命令与参数对象
  */
 function parseCommandAndArgs(text) {
     const trimmed = text.trim()
     if (!trimmed.startsWith("/")) {
-        return {command: "", args: trimmed}
+        return { command: "", args: trimmed }
     }
     const parts = trimmed.split(/\s+/)
     return {
@@ -120,60 +181,44 @@ function parseCommandAndArgs(text) {
 }
 
 /**
- * 获取指定机器人下所有启用的流程，并按类型分组。
+ * 获取指定机器人下所有启用的流程，并按照类型分类。
  *
- * - functionTemplate：放入 functionFlows
- * - roleTemplate：放入 roleFlows
+ * 分类规则：
+ *   - templateType === "functionTemplate" → 放入 functionFlows。
+ *   - templateType === "roleTemplate"     → 放入 roleFlows。
  *
- * @param {string} botId - 机器人 ID（ProcessConfig.botId）
+ * @param {string} botId - 当前机器人对应的 botId
+ * @returns {Promise<{functionFlows: ProcessConfig[], roleFlows: ProcessConfig[]}>} - 按模板类型分组的流程
  */
 async function findAllProcessesForBot(botId) {
     const all = await ProcessConfig.find({ botId, enabled: true })
 
-    const functionFlows = all.filter(item => item.templateType === "functionTemplate")
-    const roleFlows = all.filter(item => item.templateType === "roleTemplate")
-
-    return { functionFlows, roleFlows }
+    return {
+        functionFlows: all.filter(f => f.templateType === "functionTemplate"),
+        roleFlows: all.filter(f => f.templateType === "roleTemplate")
+    }
 }
 
-
 /**
- * 将角色模板文本解析成多条可用于 ChatGPT/DeepSeek 的对话消息。
+ * 将角色模板文本解析为多段对话消息。
  *
- * 角色模板允许开发者写成以下格式：
- * ```
- *   system: 你是一个猫娘...
- *   user: 进入设定模式
- *   assistant: 正在设定特征
- *   user: 现在你将模仿一只猫娘...
- * ```
+ * 支持以下格式：
+ *   - system: 预设...
+ *   - user: 用户回复...
+ *   - assistant: 大模型回复...
  *
- * 每个以 “system: / user: / assistant:” 开头的行内容会被记录。
- *
- * 解析结果格式和 OpenAI/DeepSeek 的 API 兼容：
- * ```
- *   [
- *      { role: "system", content: "..." },
- *      { role: "user", content: "..." },
- *      { role: "assistant", content: "..." }
- *   ]
- * ```
- *
- * @param {string} text - 完整的角色模板原始文本
+ * @param {string} text - 原始角色模板文件内容
+ * @returns {Array<{role:string, content:string}>} - 拆分后的消息数组
  */
 function parseRoleMessages(text) {
     if (!text.trim()) return []
 
-    // 按行拆分，兼容 Windows/Mac/Linux 换行符
     const lines = text.split(/\r?\n/)
-
     const messages = []
-    // 当前段落属于哪个角色（system/user/assistant）
+
     let currentRole = null
-    // 当前段落的内容收集区（可能多行）
     let buffer = []
 
-    // 将当前 buffer 推入 messages（如果有内容）,并清空 buffer。
     const push = () => {
         if (currentRole && buffer.length > 0) {
             messages.push({
@@ -184,116 +229,76 @@ function parseRoleMessages(text) {
         buffer = []
     }
 
-    // 遍历每一行
     for (const line of lines) {
-
-        // 匹配格式：system: xxx / user: xxx / assistant: xxx
         const m = line.match(/^(system|user|assistant)\s*:(.*)$/i)
-
         if (m) {
-            // 遇到新的角色段落，
-            // 先把旧段落推入 messages
             push()
-
-            // 设置当前角色
             currentRole = m[1].toLowerCase()
-
-            // 把冒号后面的文字加入 buffer
             buffer.push(m[2].trim())
         } else {
-            // 非角色行，继续附加到当前 buffer（支持换行、多行文本）
             buffer.push(line)
         }
     }
 
-    // 推入最后一段
     push()
-
     return messages
 }
 
 /**
- * 执行角色模板流程
+ * 执行角色模板流程（roleTemplate）。
  *
- * 工作流程：
- *   1. 使用 loadRolePrompt(processConfig) 读取角色模板内容（解析为 message 数组）
- *   2. 如果角色模板为空，表示该流程不参与角色对话 → 直接跳过
- *   3. 调用大模型（DeepSeek / OpenAI）执行对话
- *   4. 返回 AI 回复文本
+ * 流程说明：
+ *   - 读取角色模板内容作为预设消息（system/user/assistant）。
+ *   - 把用户本次输入作为最终 user 消息加入对话。
+ *   - 调用模型生成回复。
  *
- * @param {ProcessConfig} processConfig - 流程配置（包含模型、模板、角色内容等）
- * @param {string} userMessage          - 用户消息（通常为命令后的参数或完整文本）
- * @returns {Promise<string>}           - 模型生成的文本回复
+ * @param {ProcessConfig} processConfig - 当前角色模板对应的流程配置
+ * @param {string} userMessage - 用户当前输入的文本内容
+ * @returns {Promise<string>} - 大模型生成的回复文本
  */
 async function runRoleTemplate(processConfig, userMessage) {
-    // 加载角色模板消息（可能是多条 system/user/assistant，也可能为空）
     const roleMessages = await loadRolePrompt(processConfig)
-
-    // 获取对应模型客户端（OpenAI SDK，支持 DeepSeek）
     const llm = await getModelClient(processConfig.modelId)
 
-    // 构造对话消息：
-    //  - 如果有角色预设：先放入预设消息
-    //  - 如果没有预设：直接只放当前用户消息
     const messages = []
 
-    if (Array.isArray(roleMessages) && roleMessages.length > 0) {
+    if (roleMessages.length > 0) {
         messages.push(...roleMessages)
     }
 
-    // 当前用户的真实输入
     messages.push({
         role: "user",
         content: userMessage
     })
 
-    // 调用 Chat Completion 接口
     const res = await llm.chat.completions.create({
-        model: processConfig.modelId, // deepseek-chat / deepseek-reasoner / 其他
+        model: processConfig.modelId,
         messages
     })
 
-    let content = res.choices?.[0]?.message?.content || ""
-
-    return content || "（模型未返回任何内容）"
+    return res.choices?.[0]?.message?.content || ""
 }
 
-
 /**
- * 根据流程配置加载角色设定消息。
+ * 加载角色模板内容并解析为 messages 数组。
  *
- * 返回内容为 ChatGPT/DeepSeek 接受的 messages 数组，例如：
- * ```
- *   [
- *      { role: "system", content: "xxx" },
- *      { role: "user", content: "..." },
- *      { role: "assistant", content: "..." }
- *   ]
- * ```
+ * 来源优先级：
+ *   1. 自定义角色（processConfig.role）
+ *   2. 文件模板 template/roles/<template>.txt
+ *   3. 文件读取失败时回退到 processConfig.role
  *
- * 支持三种来源：
- * 1. template === "role-custom"
- *      使用数据库中 processConfig.role（作为 system 消息）
- *
- * 2. 预设模板（template/roles/*.txt）
- *      文件内容会自动解析成多条 system/user/assistant 消息
- *
- * 3. 文件读取失败时回退：
- *      - 若 processConfig.role 有内容 → 使用其构造 system 消息
- *      - 否则返回空数组（表示没有预设）
- *
- * @param {ProcessConfig} processConfig - 流程配置
+ * @param {ProcessConfig} processConfig - 流程配置，包含 template 与 role 字段
+ * @returns {Promise<Array<{role:string,content:string}>>} - 处理后的角色消息数组
  */
 async function loadRolePrompt(processConfig) {
     const tpl = processConfig.template
 
-    // 自定义角色模板
     if (!tpl || tpl === "role-custom") {
-        if (!processConfig.role) return []
-        return [{ role: "system", content: processConfig.role }]
+        return processConfig.role
+            ? [{ role: "system", content: processConfig.role }]
+            : []
     }
 
-    // 文件模板
     const filePath = path.join(TEMPLATE_ROOT, "roles", `${tpl}.txt`)
 
     try {
@@ -306,51 +311,31 @@ async function loadRolePrompt(processConfig) {
         console.warn(`读取角色模板文件失败：${filePath}`, err.message)
     }
 
-    // 回退：使用数据库中的 role 字段
-    if (processConfig.role) {
-        return [{ role: "system", content: processConfig.role }]
-    }
-
-    return []
+    return processConfig.role
+        ? [{ role: "system", content: processConfig.role }]
+        : []
 }
 
 /**
- * 执行功能模板流程
+ * 执行功能模板流程（functionTemplate）。
  *
- * 功能逻辑：
- * 1. 自定义功能（function-custom）
- *      - 直接执行 codeInjection（vm 沙盒）
+ * 模板文件路径：
+ *   - template/functions/<template>.js
  *
- * 2. 预设功能模板
- *      - 加载 template/functions/<template>.js
- *      - 调用模块的 run(context)
- *
- * 返回值规则：
- *  - 字符串：直接作为消息返回
- *  - 对象：自动 JSON.stringify
- *  - 空值：表示无需发送消息
- *
- * @param {ProcessConfig} processConfig
- * @param {string} message
- * @param {Object} event
- * @param {{command: string, args: string}} ctx
- * @returns {Promise<string>}
+ * @param {ProcessConfig} processConfig - 当前功能流程配置
+ * @param {string} message - 用户原始消息文本
+ * @param {Object} event - QQ Webhook 事件内容
+ * @param {{command:string,args:string}} parsed - 已解析的命令与参数
+ * @returns {Promise<string>} - 功能模板执行后的输出
  */
-async function runFunctionTemplate(processConfig, message, event, ctx) {
-    const {command, args} = ctx
-
-    // 自定义功能
-    if (processConfig.template === "function-custom") {
-        return await runCustomFunction(processConfig, message, event, command, args)
-    }
-
-    // 预设功能
+async function runFunctionTemplate(processConfig, message, event, parsed) {
+    const { command, args } = parsed
     const tpl = processConfig.template
     const filePath = path.join(TEMPLATE_ROOT, "functions", `${tpl}.js`)
 
     try {
         const module = await import(filePathToImportPath(filePath))
-        const fn = module.run || module.default
+        const fn = module.default
 
         if (typeof fn === "function") {
             const result = await fn({
@@ -360,80 +345,29 @@ async function runFunctionTemplate(processConfig, message, event, ctx) {
                 event,
                 config: processConfig
             })
-            return typeof result === "string" ? result : JSON.stringify(result)
+
+            return typeof result === "string"
+                ? result
+                : JSON.stringify(result)
         }
+
+        console.warn(`功能模板 ${tpl} 未导出默认函数`)
     } catch (err) {
-        console.warn(`加载功能模板失败: ${filePath}`, err.message)
+        console.warn(`加载功能模板失败：${filePath}`, err.message)
     }
 
     return ""
 }
 
 /**
- * 执行后台配置中的自定义功能代码（function-custom）。
+ * 根据 modelId 创建或复用大模型客户端。
  *
- * codeInjection 应定义 run() 函数，例如：
- *   function run(input, command, args, event, config) {
- *       return "xxx"
- *   }
+ * 使用 ModelConfig 表中的：
+ *   - apiKey
+ *   - baseUrl
  *
- * 代码执行逻辑：
- *  - 在 vm 沙盒环境执行，避免污染主程序
- *  - 禁用 console.log，避免刷日志
- *  - 限制执行时间，防止死循环卡死服务
- *
- * @param {ProcessConfig} processConfig
- * @param {string} message
- * @param {Object} event
- * @param {string} command
- * @param {string} args
- * @returns {Promise<string>}
- */
-async function runCustomFunction(processConfig, message, event, command, args) {
-    const code = processConfig.codeInjection
-    if (!code || !code.trim()) return ""
-
-    const sandbox = {
-        input: message,
-        command,
-        args,
-        event,
-        config: processConfig,
-        output: "",
-        console: { log: () => {} }
-    }
-
-    const scriptText = `
-        "use strict";
-        ${code}
-        if (typeof run === "function") {
-            output = run(input, command, args, event, config);
-        }
-    `
-
-    try {
-        const script = new vm.Script(scriptText)
-        const context = vm.createContext(sandbox)
-        script.runInContext(context, {timeout: 200})
-        return sandbox.output ? String(sandbox.output) : ""
-    } catch (err) {
-        console.error("自定义功能执行错误:", err)
-        return ""
-    }
-}
-
-/**
- * 获取大模型客户端（OpenAI/DeepSeek）。
- *
- * 模型信息来自 ModelConfig：
- *  - id       → processConfig.modelId
- *  - apiKey   → 模型的密钥
- *  - baseUrl  → 模型接口地址（DeepSeek 也兼容）
- *
- * 采用缓存避免重复创建 OpenAI 对象。
- *
- * @param {string} modelId
- * @returns {Promise<OpenAI>}
+ * @param {string} modelId - 当前流程配置中绑定的模型 ID
+ * @returns {Promise<OpenAI>} - 可直接用于 completions/chat 的模型客户端实例
  */
 async function getModelClient(modelId) {
     if (!modelId) throw new Error("流程配置缺少 modelId")
@@ -441,7 +375,7 @@ async function getModelClient(modelId) {
     const cached = modelClientCache.get(modelId)
     if (cached) return cached
 
-    const modelConfig = await ModelConfig.findOne({id: modelId})
+    const modelConfig = await ModelConfig.findOne({ id: modelId })
     if (!modelConfig) throw new Error(`未找到 ModelConfig: ${modelId}`)
 
     const client = new OpenAI({
@@ -454,34 +388,33 @@ async function getModelClient(modelId) {
 }
 
 /**
- * 发送 QQ 群文本消息。
+ * 发送 QQ 群文本消息（仅支持被动消息）。
  *
- * 使用官方接口：
- *   POST /v2/groups/{group_openid}/messages
+ * 被动消息要求：
+ *   - 必须携带 msg_id（用于回复用户消息）
+ *   - 没有 msg_id 则跳过发送（不支持主动消息）
  *
- * 支持：
- *  - 纯文本消息（msg_type = 0）
- *  - 可选 replyToMsgId，用于“回复某条消息”
- *
- * @param {BotConfig} botConfig
- * @param {string} groupOpenId
- * @param {string} content
- * @param {string} [replyToMsgId]
- * @returns {Promise<Object>}
+ * @param {BotConfig} botConfig - 当前机器人配置（包含 appId 与密钥）
+ * @param {string} groupOpenId - QQ 群 openid，用于制定发送目标
+ * @param {string} content - 要发送的文本内容
+ * @param {string} replyToMsgId - 用户触发消息的 msg_id，用于被动回复
+ * @returns {Promise<Object|void>} - 发送成功返回响应体，缺少 msg_id 则返回 void
  */
 async function sendGroupTextMessage(botConfig, groupOpenId, content, replyToMsgId) {
+    // 必须有 msg_id（被动消息）
+    if (!replyToMsgId) {
+        console.warn("未提供 msg_id，系统仅支持被动消息，跳过发送。")
+        return
+    }
+
     const accessToken = await getAccessToken(botConfig)
 
     const url = `https://api.sgroup.qq.com/v2/groups/${groupOpenId}/messages`
 
     const body = {
         content,
-        msg_type: 0
-    }
-
-    if (replyToMsgId) {
-        body.msg_id = replyToMsgId
-        body.msg_seq = 1
+        msg_type: 0,
+        msg_id: replyToMsgId
     }
 
     const res = await axios.post(url, body, {
@@ -498,16 +431,12 @@ async function sendGroupTextMessage(botConfig, groupOpenId, content, replyToMsgI
 /**
  * 获取 QQ Bot AccessToken。
  *
- * 使用缓存策略：
- *  - 以 appId 为 key
- *  - 记录 token 和过期时间
- *  - 在 token 即将过期前自动刷新
+ * Token 缓存：
+ *   - Token 有效期内会保持缓存。
+ *   - 若接近过期（提前 60 秒），则自动刷新。
  *
- * 官方接口：
- *   POST https://bots.qq.com/app/getAppAccessToken
- *
- * @param {BotConfig} botConfig
- * @returns {Promise<string>}
+ * @param {BotConfig} botConfig - 当前机器人配置（含 appId 与 appSecret）
+ * @returns {Promise<string>} - 可直接用于 Authorization 的 access_token
  */
 async function getAccessToken(botConfig) {
     const cacheKey = botConfig.appId
@@ -535,12 +464,10 @@ async function getAccessToken(botConfig) {
 }
 
 /**
- * 本地路径转为 ES Module 动态 import 可识别的 file:// 路径。
+ * 将本地路径转换为动态 import() 可用的 file:// URL。
  *
- * 解决 Node ESM 中 import 绝对路径的问题。
- *
- * @param {string} filePath
- * @returns {string}
+ * @param {string} filePath - 本地文件路径
+ * @returns {string} - 适用于 import() 的 file:// 绝对路径 URL
  */
 function filePathToImportPath(filePath) {
     const abs = path.resolve(filePath)

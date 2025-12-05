@@ -6,7 +6,6 @@ import { getDiskInfoSync } from 'node-disk-info'
 /**
  * 返回问候语。
  *
- * @function getHelloMessage
  * @returns {string} "Hello World !"
  * @example
  * getHelloMessage()
@@ -19,8 +18,6 @@ export const getHelloMessage = () => 'Hello World !'
 /**
  * 获取每个 CPU 核心的使用率（百分比）。
  *
- * @async
- * @function getCpuCoreUsage
  * @returns {Promise<Object[]>} 各核心使用率数组。
  * @example
  * await getCpuCoreUsage()
@@ -57,8 +54,6 @@ export const getCpuCoreUsage = async () => {
  *
  * 包含版本号、平台、Node 版本、CPU 使用率、内存与磁盘信息。
  *
- * @async
- * @function getSystemInfo
  * @returns {Promise<Object>} 系统信息对象。
  * @example
  * await getSystemInfo()
