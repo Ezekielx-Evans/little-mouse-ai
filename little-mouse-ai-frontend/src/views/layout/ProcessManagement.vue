@@ -469,8 +469,8 @@ onMounted(() => {
 
 <style scoped>
 .process-page {
-    margin-left: 100px;
-    margin-right: 100px;
+    margin-left: 10%;
+    margin-right: 10%;
     padding: 24px;
     display: flex;
     flex-direction: column;

@@ -119,7 +119,7 @@ function getMemoryUsage(memory) {
                         :key="item.label"
                         :md="6"
                         :sm="12"
-                        :xs="12"
+                        :xs="24"
                     >
                         <div class="info-card">
                             <div class="info-label">{{ item.label }}</div>
@@ -143,7 +143,7 @@ function getMemoryUsage(memory) {
                         :key="item.label"
                         :md="8"
                         :sm="12"
-                        :xs="12"
+                        :xs="24"
                         class="load-card"
                     >
                         <el-progress
@@ -178,7 +178,7 @@ function getMemoryUsage(memory) {
                         :key="item.label"
                         :md="8"
                         :sm="12"
-                        :xs="12"
+                        :xs="24"
                     >
                         <div class="stat-card">
                             <div class="stat-label">{{ item.label }}</div>
@@ -197,8 +197,8 @@ function getMemoryUsage(memory) {
 <style scoped>
 
 .home-page {
-    margin-left: 100px;
-    margin-right: 100px;
+    margin-left: 10%;
+    margin-right: 10%;
     padding: 24px;
     display: flex;
     flex-direction: column;

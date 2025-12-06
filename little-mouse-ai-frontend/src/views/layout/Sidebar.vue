@@ -15,9 +15,9 @@
         <el-main class="menu-area">
             <!-- default-active：默认激活菜单的 index -->
             <el-menu
+                :default-active="$route.path"
                 :router="true"
                 class="custom-menu"
-                :default-active="$route.path"
             >
                 <!-- 首页 -->
                 <el-menu-item index="/">
@@ -104,6 +104,19 @@
 </template>
 
 <style scoped>
+/* xs 屏幕：最大宽度 768px 时隐藏侧边栏文字 */
+@media (max-width: 768px) {
+    /* 隐藏文字 */
+    .custom-menu .el-menu-item span {
+        display: none;
+    }
+
+    /* 图标居中 */
+    .custom-menu .el-menu-item {
+        justify-content: center;
+    }
+}
+
 .logo-title {
     display: flex;
     align-items: center;
