@@ -17,7 +17,7 @@
             <el-menu
                 :router="true"
                 class="custom-menu"
-                default-active="/"
+                :default-active="$route.path"
             >
                 <!-- 首页 -->
                 <el-menu-item index="/">
@@ -141,6 +141,7 @@
     border-radius: 8px;
     margin-top: 8px;
     margin-bottom: 8px;
+    user-select: none
 }
 
 .icon {

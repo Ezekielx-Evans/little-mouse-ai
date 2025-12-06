@@ -147,13 +147,14 @@ const fetchData = async () => {
     letter-spacing: 0.08em;
 }
 
-.card-header .decor {
+.decor {
     display: inline-block;
     width: 6px;
     height: 20px;
     background: rgb(51, 126, 204);
     border-radius: 3px;
     margin-right: 8px;
+    user-select: none
 }
 
 .info-card {

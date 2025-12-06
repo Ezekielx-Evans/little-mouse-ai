@@ -494,8 +494,7 @@ onMounted(() => {
     letter-spacing: 0.08em;
 }
 
-.card-header .decor,
-.panel-title .decor {
+.decor {
     display: inline-block;
     width: 6px;
     height: 20px;
@@ -554,6 +553,7 @@ onMounted(() => {
     margin-bottom: 16px;
     cursor: pointer;
     transition: all 0.2s ease;
+    user-select: none
 }
 
 .config-card:last-child {

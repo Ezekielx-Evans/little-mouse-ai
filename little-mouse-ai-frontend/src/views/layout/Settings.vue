@@ -257,6 +257,7 @@ onMounted(() => {
     background: rgb(51, 126, 204);
     border-radius: 3px;
     margin-right: 8px;
+    user-select: none
 }
 
 .settings-form {
