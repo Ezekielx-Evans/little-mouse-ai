@@ -16,7 +16,7 @@ const routes = [
             {path: '/requests', component: RequestHistory},
             {path: '/bots', component: BotManagement},
             {path: '/models', component: ModelManagement},
-            {path: '/process', component: ProcessManagement},
+            {path: '/processes', component: ProcessManagement},
             {path: '/settings', component: Settings},
         ]
     },
