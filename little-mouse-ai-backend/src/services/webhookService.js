@@ -10,9 +10,6 @@ import BotConfig from "../models/botConfigModel.js"
  *  - 验证回调签名（普通事件）
  *  - 分发事件（如 MESSAGE_CREATE / GROUP_AT_MESSAGE_CREATE）
  *
- * @async
- * @function processWebhookEvent
- *
  * @param {string} botId - 路由中的机器人 ID，用于查找数据库对应配置
  * @param {Object} headers - HTTP 请求头，用于获取签名字段
  * @param {Object} body - QQ 发送的 Webhook Payload
@@ -21,7 +18,7 @@ import BotConfig from "../models/botConfigModel.js"
  *  - { type: "validation", data: {...} }  → 回调验证模式
  *  - { type: "event" } → 普通事件
  */
-export async function processWebhookEvent(botId, headers, body) {
+export async function handelWebhookEvent(botId, headers, body) {
 
     // 查找机器人配置
     const botConfig = await BotConfig.findOne({id: botId})

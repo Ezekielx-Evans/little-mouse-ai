@@ -5,9 +5,6 @@ import {deleteBotConfigById, getBotConfigList, saveBotConfig} from "../services/
  *
  * 从前端接收机器人配置表单 JSON，根据是否包含 `id` 来决定是创建新记录，还是更新已有记录。
  *
- * @async
- * @function saveConfig
- *
  * @example
  * // 前端请求示例：
  * POST /bot/save
@@ -40,9 +37,6 @@ export const saveConfig = async (req, res) => {
  * 获取所有机器人配置。
  *
  * 从数据库中读取全部机器人配置记录，并以数组形式返回。
- *
- * @async
- * @function getConfigList
  *
  * @example
  * // 前端请求示例：
@@ -82,9 +76,6 @@ export const getConfigList = async (req, res) => {
  * 删除机器人配置。
  *
  * 根据机器人ID删除对应的配置记录。
- *
- * @async
- * @function deleteConfig
  *
  * @example
  * // 前端请求示例：

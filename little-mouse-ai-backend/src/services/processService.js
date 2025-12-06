@@ -94,8 +94,8 @@ const modelClientCache = new Map()
  * 处理 QQ 群聊中 @ 机器人的消息事件。
  *
  * 此函数为 Webhook 消息处理入口，用于根据用户输入判断执行流程类型：
- * - 若输入以 "/" 开头 → 视为命令，只执行 functionTemplate 流程。
- * - 若输入为普通消息 → 执行所有 roleTemplate 流程。
+ * - 若输入以 "/" 开头，视为命令。
+ * - 若输入不以以 "/" 开头，视为发送给大模型的普通消息。
  *
  * 执行顺序：
  *   1. 从数据库中读取当前 botId 对应的所有启用流程。
@@ -108,12 +108,17 @@ const modelClientCache = new Map()
  */
 export async function handleProcessEvent(botConfig, event) {
 
+    // 获取事件中的消息
     const d = event?.d ?? {}
 
+    // 获取消息中用户真正发出的文本
     const rawContent = typeof d.content === "string" ? d.content : ""
+    // 去除首尾空格
     const text = rawContent.trim()
 
+    // 获取发送消息的 QQ 群的 OpenId
     const groupOpenId = d.group_openid
+    // 获取发送消息的 OpenId
     const replyToMsgId = d.id
 
     if (!text || !groupOpenId) {
@@ -121,11 +126,13 @@ export async function handleProcessEvent(botConfig, event) {
         return
     }
 
+    // 如果消息以 “/” 开头，则获取 命令（command）+ 参数（args），否则 命令（command）为空，消息全部放入 参数（args）
     const {command, args} = parseCommandAndArgs(text)
     const botId = botConfig.id
+    // 查找收到和消息的机器人绑定的所有流程
     const {functionFlows, roleFlows} = await findAllProcessesForBot(botId)
 
-    // 若是命令 → 只执行功能模板
+    // 若是命令，只执行功能模板
     if (command) {
         for (const funcCfg of functionFlows) {
             try {
@@ -145,7 +152,7 @@ export async function handleProcessEvent(botConfig, event) {
         return
     }
 
-    // 非命令 → 执行角色模板
+    // 非命令，执行角色模板
     for (const roleCfg of roleFlows) {
         try {
             const result = await runRoleTemplate(roleCfg, text)
@@ -211,14 +218,20 @@ async function findAllProcessesForBot(botId) {
  * @returns {Array<{role:string, content:string}>} - 拆分后的消息数组
  */
 function parseRoleMessages(text) {
+    // 检查是否为空白文本
     if (!text.trim()) return []
 
+    // 把文本拆分成一行一行的数组
     const lines = text.split(/\r?\n/)
+
     const messages = []
 
+    // 当前角色(system/user/assistant)
     let currentRole = null
+    // 临时存储当前角色的对话
     let buffer = []
 
+    // 写入一段角色的对话（如果有内容）
     const push = () => {
         if (currentRole && buffer.length > 0) {
             messages.push({
@@ -230,19 +243,39 @@ function parseRoleMessages(text) {
     }
 
     for (const line of lines) {
-        const m = line.match(/^(system|user|assistant)\s*:(.*)$/i)
-        if (m) {
+
+        // 如果为空行代表当前角色的对话完了，使用 push() 写入一段角色的对话
+        if (!line.trim()) {
             push()
-            currentRole = m[1].toLowerCase()
-            buffer.push(m[2].trim())
+            // 空行后清空 currentRole，为下一段角色做准备
+            currentRole = null
+            continue
+        }
+
+        // 获取当前对话的角色
+        const roleMatch = line.match(/^(system|user|assistant)\s*:(.*)$/)
+
+        if (roleMatch) {
+            // 保险起见，遇到新的角色依旧会推入上一段
+            push()
+
+            // 角色名原样使用（不转大小写）
+            currentRole = roleMatch[1]
+
+            // 写入第一行内容
+            buffer.push(roleMatch[2].trim())
         } else {
+            // 普通文本直接加入当前段
             buffer.push(line)
         }
     }
-
+    // 文件末尾补一次 push()
     push()
+
     return messages
 }
+
+
 
 /**
  * 执行角色模板流程（roleTemplate）。
