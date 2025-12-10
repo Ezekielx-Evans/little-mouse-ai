@@ -4,13 +4,19 @@ const processConfigSchema = new mongoose.Schema({
     id: {type: String, unique: true, required: true},
     name: String,
     enabled: Boolean,
-    templateType: String,
-    template: String,
+    processType: String,
     botId: String,
     modelId: String,
-    triggerCommand: String,
-    role: String,
-    image: String
+    roleTemplate: String,
+    roleDescription: String,
+    image: String,
+    functions: [
+        {
+            command: String,
+            file: String,
+            desc: String
+        }
+    ]
 });
 
 export default mongoose.model("ProcessConfig", processConfigSchema);

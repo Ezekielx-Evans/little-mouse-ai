@@ -1,274 +1,210 @@
 <script setup>
 import {Delete, Edit, Plus} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {computed, onMounted, ref, watch} from 'vue'
+import {onMounted, ref} from 'vue'
+import {deleteProcessConfig, getProcessConfigList, saveProcessConfig} from "@/api/processApi.js";
 
-// 流程配置列表
+// 定义第一次获取数据时的加载状态
+const loading = ref(true)
+
+// 配置文件列表
 const configs = ref([])
 
-// 当前流程配置
-const currentConfig = ref()
+// 获取配置文件
+const getConfigs = async () => {
+    try {
+        const res = await getProcessConfigList()
 
-// 是否允许编辑
-const isDisabled = ref(true)
+        // 后端成功响应格式：{ success: true, data: [...] }
+        if (res.success) {
+            configs.value = res.data
 
-// 模板类型
-const templateTypeOptions = ref([
-    {value: 'roleTemplate', label: '角色模板'},
-    {value: 'functionTemplate', label: '功能模板'},
-])
+        } else {
+            ElMessage.error('获取配置列表失败')
+        }
 
-// 模板选项
-const templateOptions = ref({
-    roleTemplate: [
-        {value: 'role-custom', label: '自定义角色'},
-        {value: 'catgirl', label: '猫娘'},
-    ],
-    functionTemplate: [
-        {value: 'life_assistant', label: '生活助手'},
-        {value: 'delta_force_assistant', label: '三角洲游戏助手'},
-    ],
-})
-
-// 查看当前模板种类中的模板
-const currentTemplateOptions = computed(() => {
-    // 获取当前配置模板类型
-    const type = currentConfig.value?.templateType
-    // type ? ... : [] -- 如果 type 有值（比如 "roleTemplate"），就执行 ...，否则直接返回 []
-    // templateOptions.value[type] ?? [] -- 从 templateOptions 中取当前模板种类中的模板。如果取不到（是 null 或 undefined），就返回空数组 []。
-    return type ? templateOptions.value[type] ?? [] : []
-})
-
-// 获取模板类型名称
-const getTemplateTypeLabel = (type) => {
-    return templateTypeOptions.value.find(item => item.value === type)?.label ?? ''
+    } catch (err) {
+        console.error(err)
+        ElMessage.error('获取配置列表失败')
+    } finally {
+        loading.value = false
+    }
 }
 
-// 机器人列表（来自机器人管理）
-const botOptions = ref([
-    {label: '客服助手', value: 'bot-001'},
-    {label: '销售助理', value: 'bot-002'},
-    {label: '技术支持', value: 'bot-003'},
-])
 
-// 大模型列表（来自模型管理）
-const modelOptions = ref([
-    {label: 'deepseek-chat', value: 'deepseek-chat'},
-    {label: 'deepseek-reasoner', value: 'deepseek-reasoner'},
-])
-
-// 当前选中的流程 ID
+// 当前选中的配置ID
 const selectedId = ref(configs.value[0]?.id ?? '')
 
-// 表单实例
-const configFormRef = ref()
+// 当前选中的配置文件
+const currentConfig = ref()
 
-// 获取流程配置列表
-const getConfigs = () => {
-    configs.value.push(
-        {
-            id: 'process-001',
-            name: '猫娘',
-            enabled: true,
-            templateType: 'roleTemplate',
-            template: 'catgirl',
-            botId: 'bot-001',
-            modelId: 'deepseek-chat',
-            triggerCommand: '',
-            role: '你是一只可爱活泼的猫娘，喜欢卖萌。',
-            image: '/src/assets/images/mouse.png',
-        },
-        {
-            id: 'process-002',
-            name: '小助手',
-            enabled: false,
-            templateType: 'functionTemplate',
-            template: 'life_assistant',
-            botId: 'bot-002',
-            modelId: 'deepseek-reasoner',
-            triggerCommand: '/life_assistant',
-            role: '',
-            image: '/src/assets/images/mouse.png',
-        },
-        {
-            id: 'process-003',
-            name: '三角洲行动游戏助手',
-            enabled: true,
-            templateType: 'functionTemplate',
-            template: 'delta_force_assistant',
-            botId: 'bot-003',
-            modelId: 'deepseek-chat',
-            triggerCommand: '/delta_force_assistant',
-            role: '',
-            image: '/src/assets/images/mouse.png',
-        },
-    )
-}
-
-// 选择流程
+// 选择其他配置时的行为
 const handleSelect = (id) => {
     selectedId.value = id
     isDisabled.value = true
-    currentConfig.value = configs.value.find(item => item.id === id)
+    currentConfig.value = configs.value.find(v => v.id === id)
 }
 
-// 新增流程
+// 添加配置时的行为
 const handleAdd = () => {
-    const index = configs.value.length + 1
     const id = `process-${Date.now()}`
-    const defaultBot = botOptions.value[0]?.value ?? ''
-    const defaultModel = modelOptions.value[0]?.value ?? ''
+    const index = configs.value.length + 1
 
-    const newProcess = {
+    configs.value.push({
         id,
-        name: `新建流程 ${index}`,
+        name: `流程配置 ${index}`,
         enabled: false,
-        // 新增：新建流程默认使用 AI 自定义模板
-        templateType: 'roleTemplate',
-        template: 'role-custom',
-        botId: defaultBot,
-        modelId: defaultModel,
-        triggerCommand: `/flow${index}`,
-        role: '',
-        image: '/src/assets/images/mouse.png',
-    }
+        processType: 'function',
+        botId: '',
+        modelId: '',
+        roleTemplate: 'custom',
+        roleDescription: '',
+        functions: [{command: '', file: '', desc: ''}],
+        image: '/src/assets/images/deepseek.png'
+    })
 
-    configs.value.push(newProcess)
     handleSelect(id)
     ElMessage.success('已新增流程配置')
 }
 
-// 编辑流程
+// 点击编辑按钮时的行为
 const handleEdit = (item) => {
     isDisabled.value = false
     ElMessage.success(`正在编辑「${item.name}」`)
 }
 
-// 删除流程
+// 删除配置时的行为
 const handleDelete = (config) => {
     ElMessageBox.confirm(`确认删除「${config.name}」吗？`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
     })
-        .then(() => {
-            const index = configs.value.findIndex((item) => item.id === config.id)
-            if (index !== -1) {
-                configs.value.splice(index, 1)
-                if (selectedId.value === config.id) {
-                    selectedId.value = configs.value[0]?.id ?? ''
-                    currentConfig.value = configs.value[0] ?? null
+        .then(async () => {
+            try {
+
+                loading.value = true
+
+                const res = await deleteProcessConfig(config.id)
+
+                if (res.success) {
+                    ElMessage.success('删除成功')
+
+                    // 刷新列表
+                    await getConfigs()
+
+                    // 更新选中项
+                    selectedId.value = ''
+                    currentConfig.value = null
+                } else {
+                    ElMessage.error(res.message || '删除失败')
                 }
-                ElMessage.success('删除成功')
+            } catch (err) {
+                console.error(err)
+                ElMessage.error('删除失败：' + err.message)
+            } finally {
+                loading.value = false
             }
         })
         .catch(() => {
         })
 }
 
+// 是否允许编辑配置
+const isDisabled = ref(true)
+
+// 表单实例
+const configFormRef = ref()
+
+// 点击新增功能时的行为
+const addFunction = () => {
+    if (!currentConfig.value) return
+    if (!Array.isArray(currentConfig.value.functions)) {
+        currentConfig.value.functions = []
+    }
+    currentConfig.value.functions.push({command: '', file: '', desc: ''})
+}
+
+// 点击删除功能时的行为
+const removeFunction = (idx) => {
+    if (!currentConfig.value || !Array.isArray(currentConfig.value.functions)) return
+    currentConfig.value.functions.splice(idx, 1)
+}
+
 // 表单校验规则
 const rules = ref({
-    name: [
-        {required: true, message: '名称不能为空！', trigger: 'blur'},
-    ],
-    // 新增：校验模板类型
-    templateType: [
-        {required: true, message: '请选择模板类型！', trigger: 'change'},
-    ],
-    template: [
-        {required: true, message: '请选择流程模板！', trigger: 'change'},
-    ],
-    botId: [
-        {required: true, message: '请选择机器人！', trigger: 'change'},
-    ],
-    modelId: [
-        {required: true, message: '请选择模型！', trigger: 'change'},
-    ],
-    triggerCommand: [
-        {required: true, message: '触发命令不能为空！', trigger: 'blur'},
-        {
-            validator: (rule, value, callback) => {
-                if (!value) {
-                    callback(new Error('触发命令不能为空！'))
-                } else if (!value.startsWith('/')) {
-                    callback(new Error('触发命令必须以 / 开头！'))
-                } else {
-                    callback()
-                }
-            },
-            trigger: 'blur',
-        },
-    ],
-})
-
-// 根据模板类型控制字段可见性与可编辑性
-// 判断模板类型是否为 roleTemplate
-const isRoleTemplate = computed(() => currentConfig.value?.templateType === 'roleTemplate')
-// 判断模板类型是否为 functionTemplate
-const isFunctionTemplate = computed(() => currentConfig.value?.templateType === 'functionTemplate')
-/// 如果模板是 roleTemplate，不显示 触发命令 输入框
-const showTriggerField = computed(() => !isRoleTemplate.value)
-// 如果模板是 functionTemplate，不显示 模型 输入框
-const showModelField = computed(() => !isFunctionTemplate.value)
-// 如果模板是 roleTemplate，显示 角色描述 输入框
-const showRoleField = computed(() => isRoleTemplate.value)
-// 如果模板是 roleTemplate 并且选择的是 "自定义角色(role-custom)"，角色描述可编辑
-const isRoleEditable = computed(() =>
-    isRoleTemplate.value && currentConfig.value?.template === 'role-custom'
-)
-
-// 监听模板类型变化，当模板从 roleTemplate 切换到 functionTemplate 时自动获取切换后模板的第一个值
-watch(() => currentConfig.value?.templateType, (type) => {
-    // 如果当前配置为空，或者模板类型为空，就直接退出
-    if (!currentConfig.value || !type) return
-    // 获取当前类型下所有可用的模板列表
-    const available = templateOptions.value[type] ?? []
-    // 如果当前配置的 template 不在可用列表中
-    if (!available.find(item => item.value === currentConfig.value.template)) {
-        // 自动切换为该类型下的第一个模板
-        currentConfig.value.template = available[0]?.value ?? ''
-    }
+    name: [{required: true, message: '名称不能为空', trigger: 'blur'}],
+    processType: [{required: true, message: '请选择流程种类', trigger: 'change'}],
+    botId: [{required: true, message: '机器人 ID 不能为空', trigger: 'blur'}],
+    modelId: [{required: true, message: '模型 ID 不能为空', trigger: 'blur'}]
 })
 
 // 保存表单
-const submitForm = (formRef) => {
-    if (!formRef) return
-    formRef.validate((valid) => {
-        if (valid) {
-            isDisabled.value = true
-            ElMessage.success('保存成功')
-        } else {
+const submitForm = async (formRef) => {
+    if (!formRef || !currentConfig.value) return
+
+    formRef.validate(async (valid) => {
+        if (!valid) {
             ElMessage.error('请检查表单输入是否正确！')
+            return
+        }
+
+        try {
+            loading.value = true
+
+            const res = await saveProcessConfig(currentConfig.value)
+
+            if (res.success) {
+                ElMessage.success('保存成功')
+
+                isDisabled.value = true
+
+                // 保存成功后刷新列表
+                await getConfigs()
+
+                // 重新选中为保存的配置
+                selectedId.value = currentConfig.value.id
+            } else {
+                ElMessage.error(res.message || '保存失败')
+            }
+        } catch (err) {
+            console.error(err)
+            ElMessage.error('保存失败：' + err.message)
+        } finally {
+            loading.value = false
         }
     })
 }
 
 // 重置表单
 const resetForm = (formRef) => {
-    if (!formRef || !currentConfig.value) return
+    if (!formRef) return
     formRef.resetFields()
-    ElMessage.success('已重置表单')
+    ElMessage.success('已重置')
 }
 
 onMounted(() => {
     getConfigs()
-
 })
 </script>
 
 <template>
     <el-scrollbar>
-        <div class="process-page">
+        <div class="model-page">
+
+            <!-- 标题卡片 -->
             <el-card class="card">
                 <div class="card-header">
                     <span class="decor"></span>
-                    流程管理
+                    配置
                 </div>
             </el-card>
 
-            <el-card class="card">
-                <div class="process-layout">
-                    <!-- 左侧流程列表 -->
+            <!-- 配置信息卡片 -->
+            <el-card v-loading="loading" class="card">
+                <div class="model-layout">
+
+                    <!-- 左侧列表 -->
                     <div class="list-panel">
                         <div class="panel-header">
                             <div class="panel-title">
@@ -282,18 +218,15 @@ onMounted(() => {
                             <div
                                 v-for="item in configs"
                                 :key="item.id"
-                                :class="['config-card', { active: selectedId === item.id }]"
+                                :class="{ active: selectedId === item.id }"
+                                class="config-card"
                                 @click="handleSelect(item.id)"
                             >
                                 <div class="config-body">
                                     <el-image :src="item.image" fit="cover"/>
                                     <div class="config-content">
                                         <div class="config-name">{{ item.name }}</div>
-                                        <!-- 新增：展示模板类型与名称 -->
                                         <div class="config-meta">
-                                            <el-tag size="small">
-                                                {{ getTemplateTypeLabel(item.templateType) }}
-                                            </el-tag>
                                             <el-tag :type="item.enabled ? 'success' : 'info'" size="small">
                                                 {{ item.enabled ? '运行中' : '已停用' }}
                                             </el-tag>
@@ -321,125 +254,150 @@ onMounted(() => {
                         </el-scrollbar>
                     </div>
 
-                    <!-- 右侧流程详情 -->
+                    <!-- 右侧详情 -->
                     <div class="details-panel">
                         <div class="panel-title">
                             <span class="decor"></span>
                             流程详情
                         </div>
-                        <div v-if="currentConfig" class="detail-content">
+
+                        <div v-if="currentConfig">
                             <el-form
                                 ref="configFormRef"
                                 :model="currentConfig"
                                 :rules="rules"
                                 label-position="top"
-                                label-width="96px"
                             >
+                                <!-- 名称 -->
                                 <el-form-item label="名称" prop="name">
-                                    <el-input
-                                        v-model="currentConfig.name"
-                                        :disabled="isDisabled"
-                                        placeholder="请输入流程名称"
-                                    />
+                                    <el-input v-model="currentConfig.name" :disabled="isDisabled"/>
                                 </el-form-item>
 
+                                <!-- 开启 -->
                                 <el-form-item label="开启">
-                                    <el-switch
-                                        v-model="currentConfig.enabled"
-                                        :disabled="isDisabled"
-                                        active-color="#67C23A"
-                                        inactive-color="#909399"
-                                    />
+                                    <el-switch v-model="currentConfig.enabled" :disabled="isDisabled"/>
                                 </el-form-item>
 
-                                <!-- 模板类型选择 -->
-                                <el-form-item label="模板类型" prop="templateType">
-                                    <el-select
-                                        v-model="currentConfig.templateType"
-                                        :disabled="isDisabled"
-                                        placeholder="请选择模板类型"
-                                    >
-                                        <el-option
-                                            v-for="item in templateTypeOptions"
-                                            :key="item.value"
-                                            :label="item.label"
-                                            :value="item.value"
-                                        />
+                                <!-- 流程种类 -->
+                                <el-form-item label="流程种类" prop="processType">
+                                    <el-select v-model="currentConfig.processType" :disabled="isDisabled">
+                                        <el-option label="功能回复" value="function"/>
+                                        <el-option label="角色对话" value="role"/>
                                     </el-select>
                                 </el-form-item>
 
-                                <!-- 模板选择 -->
-                                <el-form-item label="模板" prop="template">
-                                    <el-select
-                                        v-model="currentConfig.template"
-                                        :disabled="isDisabled"
-                                        placeholder="请选择流程模板"
+                                <!-- 机器人 ID -->
+                                <el-form-item label="机器人 ID" prop="botId">
+                                    <el-input v-model="currentConfig.botId" :disabled="isDisabled"/>
+                                </el-form-item>
+
+                                <!-- 模型 ID -->
+                                <el-form-item label="模型 ID" prop="modelId">
+                                    <el-input v-model="currentConfig.modelId" :disabled="isDisabled"/>
+                                </el-form-item>
+
+                                <!-- 角色区域（仅角色对话显示） -->
+                                <template v-if="currentConfig.processType === 'role'">
+                                    <el-form-item label="角色模板">
+                                        <el-select
+                                            v-model="currentConfig.roleTemplate"
+                                            :disabled="isDisabled"
+                                            placeholder="请选择角色模板"
+                                        >
+                                            <el-option label="自定义模板" value="custom"/>
+                                            <!-- 示例，后续可替换为目录读取结果 -->
+                                            <el-option label="示例模板 A" value="tplA"/>
+                                            <el-option label="示例模板 B" value="tplB"/>
+                                        </el-select>
+                                    </el-form-item>
+
+                                    <el-form-item
+                                        v-if="currentConfig.roleTemplate === 'custom'"
+                                        label="角色描述"
                                     >
-                                        <el-option
-                                            v-for="item in currentTemplateOptions"
-                                            :key="item.value"
-                                            :label="item.label"
-                                            :value="item.value"
+                                        <el-input
+                                            v-model="currentConfig.roleDescription"
+                                            :disabled="isDisabled"
+                                            :rows="4"
+                                            placeholder="请输入角色描述"
+                                            type="textarea"
                                         />
-                                    </el-select>
-                                </el-form-item>
+                                    </el-form-item>
+                                </template>
 
-                                <!-- 机器人选择 -->
-                                <el-form-item label="机器人" prop="botId">
-                                    <el-select
-                                        v-model="currentConfig.botId"
-                                        :disabled="isDisabled"
-                                        placeholder="请选择机器人"
+                                <!-- 功能配置（仅功能回复显示） -->
+                                <template v-if="currentConfig.processType === 'function'">
+                                    <!-- 单一标题 + 新增按钮 -->
+                                    <el-form-item label="功能配置">
+                                        <el-button
+                                            :disabled="isDisabled"
+                                            size="small"
+                                            type="primary"
+                                            @click="addFunction"
+                                        >
+                                            新增功能
+                                        </el-button>
+
+                                    </el-form-item>
+
+                                    <!-- 功能设置 -->
+                                    <el-form-item
+                                        v-for="(fn, idx) in currentConfig.functions"
+                                        :key="idx"
+                                        label-width="0"
                                     >
-                                        <el-option
-                                            v-for="bot in botOptions"
-                                            :key="bot.value"
-                                            :label="bot.label"
-                                            :value="bot.value"
-                                        />
-                                    </el-select>
-                                </el-form-item>
+                                        <div class="function-group">
+                                            <!-- 触发指令 -->
+                                            <div class="function-item-wrap">
+                                                <span class="function-desc">指令</span>
+                                                <el-input
+                                                    v-model="fn.command"
+                                                    :disabled="isDisabled"
+                                                    class="function-item"
+                                                    placeholder="触发指令，如 /help"
+                                                />
+                                            </div>
 
-                                <!-- 模型选择 -->
-                                <el-form-item v-if="showModelField" label="模型" prop="modelId">
-                                    <el-select
-                                        v-model="currentConfig.modelId"
-                                        :disabled="isDisabled"
-                                        placeholder="请选择模型"
-                                    >
-                                        <el-option
-                                            v-for="model in modelOptions"
-                                            :key="model.value"
-                                            :label="model.label"
-                                            :value="model.value"
-                                        />
-                                    </el-select>
-                                </el-form-item>
+                                            <!-- 执行文件 -->
+                                            <div class="function-item-wrap">
+                                                <span class="function-desc">文件</span>
+                                                <el-select
+                                                    v-model="fn.file"
+                                                    :disabled="isDisabled"
+                                                    class="function-item"
+                                                    placeholder="执行文件"
+                                                >
+                                                    <el-option label="help.py" value="help.py"/>
+                                                    <el-option label="ping.py" value="ping.py"/>
+                                                    <el-option label="summary.py" value="summary.py"/>
+                                                    <el-option label="translate.py" value="translate.py"/>
+                                                </el-select>
+                                            </div>
 
-                                <!-- 触发命令 -->
-                                <el-form-item v-if="showTriggerField" label="触发命令" prop="triggerCommand">
-                                    <el-input
-                                        v-model="currentConfig.triggerCommand"
-                                        :disabled="isDisabled"
-                                        placeholder="请输入以 / 开头的命令"
-                                    />
-                                </el-form-item>
+                                            <!-- 描述 -->
+                                            <div class="function-item-wrap">
+                                                <span class="function-desc">描述</span>
+                                                <el-input
+                                                    v-model="fn.desc"
+                                                    :disabled="isDisabled"
+                                                    class="function-item"
+                                                    placeholder="功能描述"
+                                                />
+                                            </div>
 
-                                <!-- 角色描述 -->
-                                <el-form-item v-if="showRoleField" label="角色描述" prop="role">
-                                    <el-input
-                                        v-model="currentConfig.role"
-                                        :autosize="{ minRows: 3 }"
-                                        :disabled="isDisabled || !isRoleEditable"
-                                        placeholder="请输入 AI 扮演角色"
-                                        type="textarea"
-                                    />
-                                    <div v-if="isRoleTemplate && currentConfig.template !== 'role-custom'"
-                                         class="field-tip">
-                                        仅自定义角色模板支持修改角色描述
-                                    </div>
-                                </el-form-item>
+                                            <!-- 删除 -->
+                                            <el-button
+                                                :disabled="isDisabled || currentConfig.functions.length <= 1"
+                                                :icon="Delete"
+                                                circle
+                                                type="danger"
+                                                @click="removeFunction(idx)"
+                                            />
+                                        </div>
+                                    </el-form-item>
+                                </template>
 
+                                <!-- 操作按钮 -->
                                 <el-form-item>
                                     <el-button
                                         :disabled="isDisabled"
@@ -457,6 +415,7 @@ onMounted(() => {
                                 </el-form-item>
                             </el-form>
                         </div>
+
                         <div v-else class="empty-state">
                             <el-empty description="请先创建或选择一个配置"/>
                         </div>
@@ -468,7 +427,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.process-page {
+.model-page {
     margin-left: 10%;
     margin-right: 10%;
     padding: 24px;
@@ -501,9 +460,10 @@ onMounted(() => {
     background: rgb(51, 126, 204);
     border-radius: 3px;
     margin-right: 8px;
+    user-select: none;
 }
 
-.process-layout {
+.model-layout {
     display: flex;
     overflow-x: auto;
     gap: 24px;
@@ -553,7 +513,7 @@ onMounted(() => {
     margin-bottom: 16px;
     cursor: pointer;
     transition: all 0.2s ease;
-    user-select: none
+    user-select: none;
 }
 
 .config-card:last-child {
@@ -597,26 +557,36 @@ onMounted(() => {
     white-space: nowrap;
 }
 
-.config-meta {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
 .config-actions {
     display: flex;
     gap: 8px;
 }
 
-.field-tip {
-    margin-top: 6px;
-    font-size: 12px;
-    color: #909399;
+.empty-state {
+    margin-top: 40px;
 }
 
-.detail-content {
-    background: #fff;
-    border-radius: 16px;
-    padding: 24px;
+.function-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.function-item-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+
+.function-item {
+    flex: 1;
+}
+
+.function-desc {
+    font-size: 12px;
+    color: #909399;
+    white-space: nowrap;
 }
 </style>

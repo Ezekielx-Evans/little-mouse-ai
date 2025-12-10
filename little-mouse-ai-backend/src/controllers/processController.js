@@ -14,7 +14,7 @@ import {deleteProcessConfigById, getProcessConfigList, saveProcessConfig} from "
  *   "name": "猫娘对话流程",
  *   "enabled": true,
  *   "templateType": "roleTemplate",
- *   "template": "catgirl",
+ *   "data": "catgirl",
  *   "botId": "bot-001",
  *   "modelId": "deepseek-chat",
  *   "triggerCommand": "",
@@ -56,7 +56,7 @@ export const saveConfig = async (req, res) => {
  *       "id": "flow-001",
  *       "name": "猫娘对话流程",
  *       "templateType": "roleTemplate",
- *       "template": "catgirl",
+ *       "data": "catgirl",
  *       ...
  *     }
  *   ]
