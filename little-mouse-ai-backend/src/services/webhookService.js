@@ -1,6 +1,7 @@
 import nacl from "tweetnacl"
 import {decode as hexDecode} from "@stablelib/hex"
 import BotConfig from "../models/botConfigModel.js"
+import {handleProcessEvent} from "./processService.js";
 
 /**
  * 处理与 QQ 机器人开放平台的 Webhook 通信。
@@ -122,6 +123,7 @@ async function dispatchBotEvent(botConfig, event) {
     switch (type) {
         case "GROUP_AT_MESSAGE_CREATE":
             console.log("群聊 @ 机器人:", event.d)
+            await handleProcessEvent(botConfig, event)
             break
 
         default:

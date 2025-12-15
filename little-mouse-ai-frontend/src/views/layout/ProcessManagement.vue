@@ -2,7 +2,91 @@
 import {Delete, Edit, Plus} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {onMounted, ref} from 'vue'
-import {deleteProcessConfig, getProcessConfigList, saveProcessConfig} from "@/api/processApi.js";
+import {deleteProcessConfig, getModels, getProcessConfigList, saveProcessConfig} from "@/api/processApi.js";
+import {getBotConfigList} from "@/api/botApi.js";
+import {getModelConfigList} from "@/api/modelApi.js";
+
+// 下拉菜单加载状态
+const botLoading = ref(false)
+const modelIdLoading = ref(false)
+const modelLoading = ref(false)
+// 机器人 ID 下拉选项
+const botIdOptions = ref([])
+// 模型 ID 下拉选项
+const modelIdOptions = ref([])
+// 可用模型列表下拉选项
+const modelOptions = ref([])
+// 加载机器人 ID 列表
+const loadBotOptions = async () => {
+    botLoading.value = true
+    try {
+        const res = await getBotConfigList()
+
+        if (!res.success) {
+            return ElMessage.error(res.message || "业务错误：机器人 ID 列表加载失败")
+        }
+
+        botIdOptions.value = res.data.map(item => ({
+            label: item.name,
+            value: item.id
+        }))
+
+    } catch (err) {
+        ElMessage.error(`系统错误：${err.message || "机器人 ID 列表加载失败"}`)
+    } finally {
+        botLoading.value = false
+    }
+}
+// 加载模型 ID 列表
+const loadModelIdOptions = async () => {
+    modelIdLoading.value = true
+    try {
+        const res = await getModelConfigList()
+
+        if (!res.success) {
+            return ElMessage.error(res.message || "业务错误：模型 ID 列表加载失败")
+        }
+
+        modelIdOptions.value = res.data.map(item => ({
+            label: item.name,
+            value: item.id
+        }))
+
+    } catch (err) {
+        ElMessage.error(`系统错误：${err.message || "模型 ID 列表加载失败"}`)
+    } finally {
+        modelIdLoading.value = false
+    }
+}
+// 加载可用模型列表
+const loadModelOptions = async () => {
+    if (!currentConfig.value?.modelId) {
+        return ElMessage.warning("请先选择模型 ID")
+    }
+
+    modelLoading.value = true
+
+    try {
+        const res = await getModels(currentConfig.value.modelId)
+
+        if (!res.success) {
+            modelOptions.value = []
+            return ElMessage.error(res.message || "业务错误：模型列表加载失败")
+        }
+
+        modelOptions.value = res.data.map(item => ({
+            label: item.id,
+            value: item.id
+        }))
+
+    } catch (err) {
+        modelOptions.value = []
+        ElMessage.error(`系统错误：${err.message || "模型列表加载失败"}`)
+    } finally {
+        modelLoading.value = false
+    }
+}
+
 
 // 定义第一次获取数据时的加载状态
 const loading = ref(true)
@@ -15,17 +99,16 @@ const getConfigs = async () => {
     try {
         const res = await getProcessConfigList()
 
-        // 后端成功响应格式：{ success: true, data: [...] }
         if (res.success) {
             configs.value = res.data
 
         } else {
-            ElMessage.error('获取配置列表失败')
+            return ElMessage.error(res.message || '业务错误：获取配置列表失败')
         }
 
     } catch (err) {
         console.error(err)
-        ElMessage.error('获取配置列表失败')
+        ElMessage.error(`系统错误：${err.message || '获取配置列表失败'}`)
     } finally {
         loading.value = false
     }
@@ -39,7 +122,7 @@ const selectedId = ref(configs.value[0]?.id ?? '')
 const currentConfig = ref()
 
 // 选择其他配置时的行为
-const handleSelect = (id) => {
+const handleSelect = async (id) => {
     selectedId.value = id
     isDisabled.value = true
     currentConfig.value = configs.value.find(v => v.id === id)
@@ -57,6 +140,7 @@ const handleAdd = () => {
         processType: 'function',
         botId: '',
         modelId: '',
+        model: '',
         roleTemplate: 'custom',
         roleDescription: '',
         functions: [{command: '', file: '', desc: ''}],
@@ -134,9 +218,10 @@ const removeFunction = (idx) => {
 // 表单校验规则
 const rules = ref({
     name: [{required: true, message: '名称不能为空', trigger: 'blur'}],
-    processType: [{required: true, message: '请选择流程种类', trigger: 'change'}],
+    processType: [{required: true, message: '请选择流程种类', trigger: 'blur'}],
     botId: [{required: true, message: '机器人 ID 不能为空', trigger: 'blur'}],
-    modelId: [{required: true, message: '模型 ID 不能为空', trigger: 'blur'}]
+    modelId: [{required: true, message: '模型 ID 不能为空', trigger: 'blur'}],
+    model: [{required: true, message: '模型不能为空', trigger: 'blur'}]
 })
 
 // 保存表单
@@ -288,13 +373,58 @@ onMounted(() => {
 
                                 <!-- 机器人 ID -->
                                 <el-form-item label="机器人 ID" prop="botId">
-                                    <el-input v-model="currentConfig.botId" :disabled="isDisabled"/>
+                                    <el-select v-model="currentConfig.botId"
+                                               :disabled="isDisabled"
+                                               :loading="botLoading"
+                                               placeholder="选择机器人 ID"
+                                               @visible-change="val => val && loadBotOptions()"
+                                    >
+                                        <el-option
+                                            v-for="item in botIdOptions"
+                                            :key="item.value"
+                                            :label="item.label"
+                                            :value="item.value"
+                                        />
+                                    </el-select>
                                 </el-form-item>
+
 
                                 <!-- 模型 ID -->
                                 <el-form-item label="模型 ID" prop="modelId">
-                                    <el-input v-model="currentConfig.modelId" :disabled="isDisabled"/>
+                                    <el-select v-model="currentConfig.modelId"
+                                               :disabled="isDisabled"
+                                               :loading="modelIdLoading"
+                                               placeholder="选择模型 ID"
+                                               @visible-change="val => val && loadModelIdOptions()"
+                                    >
+                                        <el-option
+                                            v-for="item in modelIdOptions"
+                                            :key="item.value"
+                                            :label="item.label"
+                                            :value="item.value"
+                                        />
+                                    </el-select>
                                 </el-form-item>
+
+
+                                <!-- 模型 -->
+                                <el-form-item label="模型" prop="model">
+                                    <el-select
+                                        v-model="currentConfig.model"
+                                        :disabled="isDisabled"
+                                        :loading="modelLoading"
+                                        placeholder="选择模型"
+                                        @visible-change="val => val && loadModelOptions()"
+                                    >
+                                        <el-option
+                                            v-for="item in modelOptions"
+                                            :key="item.value"
+                                            :label="item.label"
+                                            :value="item.value"
+                                        />
+                                    </el-select>
+                                </el-form-item>
+
 
                                 <!-- 角色区域（仅角色对话显示） -->
                                 <template v-if="currentConfig.processType === 'role'">

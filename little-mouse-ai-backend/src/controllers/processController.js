@@ -1,4 +1,9 @@
-import {deleteProcessConfigById, getProcessConfigList, saveProcessConfig} from "../services/processService.js"
+import {
+    deleteProcessConfigById,
+    getModelsByModelId,
+    getProcessConfigList,
+    saveProcessConfig
+} from "../services/processService.js"
 
 /**
  * 保存流程配置（新增或更新）。
@@ -124,3 +129,29 @@ export const deleteConfig = async (req, res) => {
         })
     }
 }
+
+export const getModels = async (req, res) => {
+    try {
+        const modelId = req.params.modelId;
+
+        if (!modelId) {
+            return res.status(400).json({
+                success: false,
+                message: "modelId 不能为空"
+            });
+        }
+
+        const list = await getModelsByModelId(modelId);
+
+        res.json({
+            success: true,
+            data: list
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};

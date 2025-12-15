@@ -19,3 +19,9 @@ export const deleteProcessConfig = async (id) => {
     })
     return res.data
 }
+
+// 获取流程配置绑定的大模型可用的模型列表
+export const getModels = async (modelId) => {
+    const res = await instance.get(`/process/models/${modelId}`);
+    return res.data;
+};

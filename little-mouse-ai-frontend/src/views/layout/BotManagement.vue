@@ -16,17 +16,16 @@ const getConfigs = async () => {
     try {
         const res = await getBotConfigList()
 
-        // 后端成功响应格式：{ success: true, data: [...] }
         if (res.success) {
             configs.value = res.data
 
         } else {
-            ElMessage.error('获取配置列表失败')
+            return ElMessage.error(res.message || '业务错误：获取配置列表失败')
         }
 
     } catch (err) {
         console.error(err)
-        ElMessage.error('获取配置列表失败')
+        ElMessage.error(`系统错误：${err.message || '获取配置列表失败'}`)
     } finally {
         loading.value = false
     }
@@ -268,6 +267,11 @@ onMounted(() => {
                                     <el-image :src="item.image" fit="cover"/>
                                     <div class="config-content">
                                         <div class="config-name">{{ item.name }}</div>
+                                        <div class="config-meta">
+                                            <el-tag size="small">
+                                                {{ item.id }}
+                                            </el-tag>
+                                        </div>
                                     </div>
                                 </div>
 

@@ -79,6 +79,41 @@ export async function deleteProcessConfigById(id) {
     return ProcessConfig.deleteOne(filter)
 }
 
+/**
+ * 根据 modelId 获取该模型配置下的模型列表。
+ *
+ * 逻辑：
+ *   - 查询 ModelConfig 得到 apiKey / baseUrl
+ *   - 创建 OpenAI 客户端
+ *   - client.models.list()
+ *
+ * @param {string} modelId
+ *
+ * @returns {Promise<Array<{id:string, owned_by:string}>>}
+ */
+export async function getModelsByModelId(modelId) {
+    // 读取模型配置
+    const cfg = await ModelConfig.findOne({ id: modelId });
+    if (!cfg) throw new Error(`未找到 ModelConfig: ${modelId}`);
+
+    try {
+        const client = new OpenAI({
+            baseURL: cfg.baseUrl,
+            apiKey: cfg.apiKey
+        });
+
+        // SDK 获取模型列表
+        const res = await client.models.list();
+
+        return res.data.map(m => ({
+            id: m.id
+        }));
+    } catch (err) {
+        console.error(`获取模型列表失败（modelId=${modelId}）:`, err.message);
+        return [];
+    }
+}
+
 
 // 项目根路径下的 data 目录
 const DATA_ROOT = path.resolve(process.cwd(), "data")
@@ -337,6 +372,7 @@ function parseRoleMessages(text) {
  *
  * @param {ProcessConfig} processConfig - 当前角色模板对应的流程配置
  * @param {string} userMessage - 用户当前输入的文本内容
+ *
  * @returns {Promise<string>} - 大模型生成的回复文本
  */
 async function playRole(processConfig, userMessage) {
@@ -357,7 +393,8 @@ async function playRole(processConfig, userMessage) {
     })
 
     const res = await llm.chat.completions.create({
-        model: processConfig.modelId, messages
+        messages: messages,
+        model: processConfig.model
     })
 
     return res.choices?.[0]?.message?.content || ""

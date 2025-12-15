@@ -7,6 +7,7 @@ const processConfigSchema = new mongoose.Schema({
     processType: String,
     botId: String,
     modelId: String,
+    model: String,
     roleTemplate: String,
     roleDescription: String,
     image: String,
