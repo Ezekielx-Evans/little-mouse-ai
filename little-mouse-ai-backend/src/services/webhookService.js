@@ -30,7 +30,6 @@ export async function handelWebhookEvent(botId, headers, body) {
     // 判断是否为回调地址验证事件（op=13）
     if (body.op === 13) {
         return {
-            type: "validation",
             data: genValidationResponse(botSecret, body)
         }
     }

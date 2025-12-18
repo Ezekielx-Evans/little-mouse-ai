@@ -2,23 +2,40 @@
 import {Delete, Edit, Plus} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {onMounted, ref} from 'vue'
-import {deleteProcessConfig, getModels, getProcessConfigList, saveProcessConfig} from "@/api/processApi.js";
+import {
+    deleteProcessConfig,
+    getFunctionJsList,
+    getModels,
+    getProcessConfigList,
+    getRoleTxtList,
+    saveProcessConfig
+} from "@/api/processApi.js";
 import {getBotConfigList} from "@/api/botApi.js";
 import {getModelConfigList} from "@/api/modelApi.js";
 
 // 下拉菜单加载状态
-const botLoading = ref(false)
+const botIdLoading = ref(false)
 const modelIdLoading = ref(false)
 const modelLoading = ref(false)
+const templateLoading = ref(false)
+const functionLoading = ref(false)
+
 // 机器人 ID 下拉选项
 const botIdOptions = ref([])
 // 模型 ID 下拉选项
 const modelIdOptions = ref([])
 // 可用模型列表下拉选项
 const modelOptions = ref([])
+// 角色预设下拉选项
+const roleOptions = ref([
+    {label: '自定义角色', value: 'custom'}
+])
+// 功能脚本下拉选项
+const functionOptions = ref([])
+
 // 加载机器人 ID 列表
 const loadBotOptions = async () => {
-    botLoading.value = true
+    botIdLoading.value = true
     try {
         const res = await getBotConfigList()
 
@@ -34,7 +51,7 @@ const loadBotOptions = async () => {
     } catch (err) {
         ElMessage.error(`系统错误：${err.message || "机器人 ID 列表加载失败"}`)
     } finally {
-        botLoading.value = false
+        botIdLoading.value = false
     }
 }
 // 加载模型 ID 列表
@@ -87,6 +104,51 @@ const loadModelOptions = async () => {
     }
 }
 
+// 加载角色预设列表
+const loadTemplateOptions = async () => {
+    templateLoading.value = true
+    try {
+        const res = await getRoleTxtList()
+
+        if (!res.success) {
+            return ElMessage.error(res.message || '业务错误：预设列表加载失败')
+        }
+
+        roleOptions.value = [
+            {label: '自定义预设', value: 'custom'},
+            ...res.data.map(name => ({
+                label: name,
+                value: name
+            }))
+        ]
+
+    } catch (err) {
+        ElMessage.error(`系统错误：${err.message || '预设列表加载失败'}`)
+    } finally {
+        templateLoading.value = false
+    }
+}
+
+// 加载功能文件列表
+const loadFunctionOptions = async () => {
+    functionLoading.value = true
+    try {
+        const res = await getFunctionJsList()
+
+        if (!res.success) {
+            return ElMessage.error(res.message || '业务错误：功能脚本列表加载失败')
+        }
+
+        functionOptions.value = res.data.map(name => ({
+            label: name,
+            value: name
+        }))
+    } catch (err) {
+        ElMessage.error(`系统错误：${err.message || '功能脚本列表加载失败'}`)
+    } finally {
+        functionLoading.value = false
+    }
+}
 
 // 定义第一次获取数据时的加载状态
 const loading = ref(true)
@@ -221,7 +283,9 @@ const rules = ref({
     processType: [{required: true, message: '请选择流程种类', trigger: 'blur'}],
     botId: [{required: true, message: '机器人 ID 不能为空', trigger: 'blur'}],
     modelId: [{required: true, message: '模型 ID 不能为空', trigger: 'blur'}],
-    model: [{required: true, message: '模型不能为空', trigger: 'blur'}]
+    model: [{required: true, message: '模型不能为空', trigger: 'blur'}],
+    preset: [{required: true, message: '角色不能为空', trigger: 'blur'}],
+
 })
 
 // 保存表单
@@ -375,72 +439,90 @@ onMounted(() => {
                                 <el-form-item label="机器人 ID" prop="botId">
                                     <el-select v-model="currentConfig.botId"
                                                :disabled="isDisabled"
-                                               :loading="botLoading"
+                                               :loading="botIdLoading"
                                                placeholder="选择机器人 ID"
                                                @visible-change="val => val && loadBotOptions()"
                                     >
                                         <el-option
                                             v-for="item in botIdOptions"
                                             :key="item.value"
-                                            :label="item.label"
+                                            :label="item.value"
                                             :value="item.value"
-                                        />
+                                        >
+                                            <div class="option-row">
+                                                <span>{{ item.label }}</span>
+                                                <el-tag size="small">
+                                                    {{ item.value }}
+                                                </el-tag>
+                                            </div>
+                                        </el-option>
                                     </el-select>
                                 </el-form-item>
-
-
-                                <!-- 模型 ID -->
-                                <el-form-item label="模型 ID" prop="modelId">
-                                    <el-select v-model="currentConfig.modelId"
-                                               :disabled="isDisabled"
-                                               :loading="modelIdLoading"
-                                               placeholder="选择模型 ID"
-                                               @visible-change="val => val && loadModelIdOptions()"
-                                    >
-                                        <el-option
-                                            v-for="item in modelIdOptions"
-                                            :key="item.value"
-                                            :label="item.label"
-                                            :value="item.value"
-                                        />
-                                    </el-select>
-                                </el-form-item>
-
-
-                                <!-- 模型 -->
-                                <el-form-item label="模型" prop="model">
-                                    <el-select
-                                        v-model="currentConfig.model"
-                                        :disabled="isDisabled"
-                                        :loading="modelLoading"
-                                        placeholder="选择模型"
-                                        @visible-change="val => val && loadModelOptions()"
-                                    >
-                                        <el-option
-                                            v-for="item in modelOptions"
-                                            :key="item.value"
-                                            :label="item.label"
-                                            :value="item.value"
-                                        />
-                                    </el-select>
-                                </el-form-item>
-
 
                                 <!-- 角色区域（仅角色对话显示） -->
                                 <template v-if="currentConfig.processType === 'role'">
-                                    <el-form-item label="角色模板">
-                                        <el-select
-                                            v-model="currentConfig.roleTemplate"
-                                            :disabled="isDisabled"
-                                            placeholder="请选择角色模板"
+
+                                    <!-- 模型 ID -->
+                                    <el-form-item label="模型 ID" prop="modelId">
+                                        <el-select v-model="currentConfig.modelId"
+                                                   :disabled="isDisabled"
+                                                   :loading="modelIdLoading"
+                                                   placeholder="选择模型 ID"
+                                                   @visible-change="val => val && loadModelIdOptions()"
                                         >
-                                            <el-option label="自定义模板" value="custom"/>
-                                            <!-- 示例，后续可替换为目录读取结果 -->
-                                            <el-option label="示例模板 A" value="tplA"/>
-                                            <el-option label="示例模板 B" value="tplB"/>
+                                            <el-option
+                                                v-for="item in modelIdOptions"
+                                                :key="item.value"
+                                                :label="item.value"
+                                                :value="item.value"
+                                            >
+                                                <div class="option-row">
+                                                    <span>{{ item.label }}</span>
+                                                    <el-tag size="small">
+                                                        {{ item.value }}
+                                                    </el-tag>
+                                                </div>
+                                            </el-option>
                                         </el-select>
                                     </el-form-item>
 
+                                    <!-- 模型 -->
+                                    <el-form-item label="模型" prop="model">
+                                        <el-select
+                                            v-model="currentConfig.model"
+                                            :disabled="isDisabled"
+                                            :loading="modelLoading"
+                                            placeholder="选择模型"
+                                            @visible-change="val => val && loadModelOptions()"
+                                        >
+                                            <el-option
+                                                v-for="item in modelOptions"
+                                                :key="item.value"
+                                                :label="item.label"
+                                                :value="item.value"
+                                            />
+                                        </el-select>
+                                    </el-form-item>
+
+                                    <!-- 角色预设 -->
+                                    <el-form-item label="角色预设" prop="preset">
+                                        <el-select
+                                            v-model="currentConfig.roleTemplate"
+                                            :disabled="isDisabled"
+                                            :loading="templateLoading"
+                                            placeholder="请选择角色预设"
+                                            @visible-change="val => val && loadTemplateOptions()"
+                                        >
+                                            <el-option
+                                                v-for="item in roleOptions"
+                                                :key="item.value"
+                                                :label="item.label"
+                                                :value="item.value"
+                                            />
+                                        </el-select>
+                                    </el-form-item>
+
+                                    <!-- 角色描述 -->
                                     <el-form-item
                                         v-if="currentConfig.roleTemplate === 'custom'"
                                         label="角色描述"
@@ -453,11 +535,13 @@ onMounted(() => {
                                             type="textarea"
                                         />
                                     </el-form-item>
+
                                 </template>
 
                                 <!-- 功能配置（仅功能回复显示） -->
                                 <template v-if="currentConfig.processType === 'function'">
-                                    <!-- 单一标题 + 新增按钮 -->
+
+                                    <!-- 标题 + 新增按钮 -->
                                     <el-form-item label="功能配置">
                                         <el-button
                                             :disabled="isDisabled"
@@ -474,7 +558,6 @@ onMounted(() => {
                                     <el-form-item
                                         v-for="(fn, idx) in currentConfig.functions"
                                         :key="idx"
-                                        label-width="0"
                                     >
                                         <div class="function-group">
                                             <!-- 触发指令 -->
@@ -494,13 +577,17 @@ onMounted(() => {
                                                 <el-select
                                                     v-model="fn.file"
                                                     :disabled="isDisabled"
+                                                    :loading="functionLoading"
                                                     class="function-item"
                                                     placeholder="执行文件"
+                                                    @visible-change="val => val && loadFunctionOptions()"
                                                 >
-                                                    <el-option label="help.py" value="help.py"/>
-                                                    <el-option label="ping.py" value="ping.py"/>
-                                                    <el-option label="summary.py" value="summary.py"/>
-                                                    <el-option label="translate.py" value="translate.py"/>
+                                                    <el-option
+                                                        v-for="item in functionOptions"
+                                                        :key="item.value"
+                                                        :label="item.value"
+                                                        :value="item.value"
+                                                    />
                                                 </el-select>
                                             </div>
 
@@ -517,7 +604,7 @@ onMounted(() => {
 
                                             <!-- 删除 -->
                                             <el-button
-                                                :disabled="isDisabled || currentConfig.functions.length <= 1"
+                                                :disabled="isDisabled"
                                                 :icon="Delete"
                                                 circle
                                                 type="danger"
@@ -718,5 +805,11 @@ onMounted(() => {
     font-size: 12px;
     color: #909399;
     white-space: nowrap;
+}
+
+.option-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 </style>

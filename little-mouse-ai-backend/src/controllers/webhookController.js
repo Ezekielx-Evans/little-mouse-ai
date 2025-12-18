@@ -25,15 +25,20 @@ export async function processEvent(req, res) {
     const botId = req.params.botId
 
     try {
-        const result = await handelWebhookEvent(botId, req.headers, req.body)
 
         // Webhook 验证模式（op=13）
-        if (result.type === "validation") {
+        if (req.body?.op === 13) {
+            const result = await handelWebhookEvent(botId, req.headers, req.body)
             return res.json(result.data)
         }
 
-        // 普通事件（必须回 ACK）
-        return res.json({code: 0, message: "ok"})
+        // 普通事件（先返回 ACK）
+        res.json({code: 0, message: "ok"})
+        // 后台异步处理
+        handelWebhookEvent(botId, req.headers, req.body)
+            .catch(err => {
+            console.error("Webhook 异步处理异常:", err)
+        })
 
     } catch (err) {
         console.error("Webhook 处理异常:", err)

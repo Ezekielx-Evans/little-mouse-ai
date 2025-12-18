@@ -1,5 +1,12 @@
 import express from 'express'
-import {deleteConfig, getConfigList, getModels, saveConfig} from "../controllers/processController.js";
+import {
+    deleteConfig,
+    getConfigList,
+    getFunctions,
+    getModels,
+    getRoles,
+    saveConfig
+} from "../controllers/processController.js";
 
 const router = express.Router()
 
@@ -14,5 +21,11 @@ router.delete('/delete', deleteConfig)
 
 // 获取流程配置绑定的大模型可用的模型列表
 router.get('/models/:modelId', getModels)
+
+// 获取角色模板列表
+router.get("/roles", getRoles)
+
+// 获取功能文件列表
+router.get("/functions", getFunctions)
 
 export default router

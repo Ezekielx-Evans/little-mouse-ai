@@ -4,6 +4,26 @@ import path from "path"
 import OpenAI from "openai"
 import ModelConfig from "../models/modelConfigModel.js"
 import ProcessConfig from "../models/processConfigModel.js"
+import RequestLog from "../models/requestLogModel.js"
+
+// 流程对话记忆
+const conversationMemory = new Map()
+
+// 储存对话条数，最多 20 条 message = 10 轮对话
+const MAX_CONVERSATION_MESSAGES = 20
+
+// 项目根路径下的 data 目录
+const DATA_ROOT = path.resolve(process.cwd(), "data")
+
+// AccessToken 内存缓存（appId → token）
+const tokenCache = new Map()
+
+// 模型客户端缓存（modelId → OpenAI client）
+const modelClientCache = new Map()
+
+// msg_id → { currentMsgSeq, expiresAtMs }
+// 用于同一条被动消息（msg_id）多次回复时，保证 msg_seq 递增，避免“消息被去重”
+const msgSeqCache = new Map()
 
 /**
  * 保存流程配置（新增或更新）。
@@ -46,20 +66,20 @@ export async function saveProcessConfig(data) {
  * @example
  * const list = await getProcessConfigList()
  * // 返回示例：
- * // [
- * //   {
- * //     id: "flow-001",
- * //     name: "猫娘对话流程",
- * //     templateType: "roleTemplate",
- * //     ...
- * //   },
- * //   {
- * //     id: "flow-002",
- * //     name: "战绩查询流程",
- * //     templateType: "functionTemplate",
- * //     ...
- * //   }
- * // ]
+ * [
+ *   {
+ *     id: "flow-001",
+ *     name: "猫娘对话流程",
+ *     templateType: "roleTemplate",
+ *     ...
+ *   },
+ *   {
+ *     id: "flow-002",
+ *     name: "战绩查询流程",
+ *     templateType: "functionTemplate",
+ *     ...
+ *   }
+ * ]
  */
 export async function getProcessConfigList() {
     return ProcessConfig.find()
@@ -80,6 +100,38 @@ export async function deleteProcessConfigById(id) {
 }
 
 /**
+ * 获取 roles 目录下所有 txt 模板名（不含 .txt 后缀）
+ * @example
+ * const list = await getRoleTxtList()
+ * // 返回示例：["catgirl", "assistant"]
+ */
+export async function getRoleTxtList() {
+    const rolesDir = path.join(DATA_ROOT, "roles")
+
+    const files = await fs.readdir(rolesDir, {withFileTypes: true})
+
+    return files
+        .filter(item => item.isFile() && item.name.endsWith(".txt"))
+        .map(item => item.name.replace(/\.txt$/, ""))
+}
+
+/**
+ * 获取 functions 目录下所有 JavaScript 文件
+ * @example
+ * const list = await getFunctionJsList()
+ * // 返回示例：["help.js", "clear.js"]
+ */
+export async function getFunctionJsList() {
+    const functionsDir = path.join(DATA_ROOT, "functions")
+
+    const files = await fs.readdir(functionsDir, {withFileTypes: true})
+
+    return files
+        .filter(item => item.isFile() && item.name.endsWith(".js"))
+        .map(item => item.name)
+}
+
+/**
  * 根据 modelId 获取该模型配置下的模型列表。
  *
  * 逻辑：
@@ -93,13 +145,12 @@ export async function deleteProcessConfigById(id) {
  */
 export async function getModelsByModelId(modelId) {
     // 读取模型配置
-    const cfg = await ModelConfig.findOne({ id: modelId });
+    const cfg = await ModelConfig.findOne({id: modelId});
     if (!cfg) throw new Error(`未找到 ModelConfig: ${modelId}`);
 
     try {
         const client = new OpenAI({
-            baseURL: cfg.baseUrl,
-            apiKey: cfg.apiKey
+            baseURL: cfg.baseUrl, apiKey: cfg.apiKey
         });
 
         // SDK 获取模型列表
@@ -113,16 +164,6 @@ export async function getModelsByModelId(modelId) {
         return [];
     }
 }
-
-
-// 项目根路径下的 data 目录
-const DATA_ROOT = path.resolve(process.cwd(), "data")
-
-// AccessToken 内存缓存（appId → token）
-const tokenCache = new Map()
-
-// 模型客户端缓存（modelId → OpenAI client）
-const modelClientCache = new Map()
 
 /**
  * 处理 QQ 群聊中 @ 机器人的消息事件。
@@ -171,7 +212,7 @@ export async function handleProcessEvent(botConfig, event) {
         for (const funcCfg of functionProcesses) {
             try {
 
-                const result = await runFunction(funcCfg, args)
+                const result = await runFunction(funcCfg, command, args)
 
                 if (result && result.trim()) {
                     await sendGroupTextMessage(botConfig, groupOpenId, result.trim(), replyToMsgId)
@@ -251,10 +292,11 @@ async function findAllProcessesForBot(botId) {
  *   4. 将 command / args 传入模板函数。
  *
  * @param {ProcessConfig} processConfig - 当前流程配置（含 functions[]）
+ * @param {string} command - 命令
  * @param {string} args - 命令参数
  * @returns {Promise<string>} - 执行功能模板后的输出
  */
-async function runFunction(processConfig, args) {
+async function runFunction(processConfig, command, args) {
 
     // 当前流程中的所有功能项
     const funcList = processConfig.functions || [];
@@ -269,7 +311,7 @@ async function runFunction(processConfig, args) {
     }
 
     // 模板文件路径：data/functions/<file>.js
-    const filePath = path.join(DATA_ROOT, "functions", `${funcItem.file}.js`);
+    const filePath = path.join(DATA_ROOT, "functions", `${funcItem.file}`);
 
     try {
         // 以 file:// URL 动态 import
@@ -377,9 +419,16 @@ function parseRoleMessages(text) {
  */
 async function playRole(processConfig, userMessage) {
 
+    // 使用用 processId 作为对话记忆 key
+    const memoryKey = processConfig.id
 
+    // 读取历史对话，最多 MAX_CONVERSATION_MESSAGES（默认 20） 条
+    const historyMessages = conversationMemory.get(memoryKey) ?? []
+
+    // 加载角色预设
     const roleMessages = await loadRolePrompt(processConfig)
 
+    // 获取 OpenSDK 创建的模型实例
     const llm = await getModelClient(processConfig.modelId)
 
     const messages = []
@@ -388,37 +437,119 @@ async function playRole(processConfig, userMessage) {
         messages.push(...roleMessages)
     }
 
+    // 插入历史对话（user / assistant）
+    if (historyMessages.length > 0) {
+        messages.push(...historyMessages)
+    }
+
+    // 插入当前用户的对话
     messages.push({
-        role: "user", content: userMessage
+        role: "user",
+        content: userMessage
     })
 
-    const res = await llm.chat.completions.create({
-        messages: messages,
-        model: processConfig.model
-    })
+    // 记录请求开始的时间
+    const requestAt = new Date()
+    // 请求记录
+    let requestLog
+    // 请求回复
+    let response
+    // 消耗 Token
+    let tokens = 0
 
-    return res.choices?.[0]?.message?.content || ""
+    try {
+        // 请求前：创建请求记录（status: "pending"）
+        requestLog = await RequestLog.create({
+            modelId: processConfig.modelId,
+            processId: processConfig.id,
+            botId: processConfig.botId,
+
+            status: "pending",
+
+            request: {
+                model: processConfig.model,
+                messages
+            },
+
+            tokens: 0,
+            requestAt
+        })
+
+        // 调用大模型
+        const res = await llm.chat.completions.create({
+            model: processConfig.model,
+            messages
+        })
+
+        const assistantReply =
+            res.choices?.[0]?.message?.content || ""
+
+        // 更新对话记忆（只保存 user / assistant）
+        const nextHistory = [
+            ...historyMessages,
+            {role: "user", content: userMessage},
+            {role: "assistant", content: assistantReply}
+        ]
+
+        conversationMemory.set(
+            memoryKey,
+            nextHistory.slice(-MAX_CONVERSATION_MESSAGES)
+        )
+
+        // 更新请求成功记录
+        await RequestLog.updateOne(
+            {_id: requestLog._id},
+            {
+                status: "success",
+                response: res,
+                tokens: res.usage?.total_tokens ?? 0,
+                responseAt: new Date()
+            }
+        )
+
+        return assistantReply
+
+    } catch (err) {
+
+        // 更新请求失败记录
+        if (requestLog) {
+            await RequestLog.updateOne(
+                {_id: requestLog._id},
+                {
+                    status: "error",
+                    response: {
+                        message: err.message
+                    },
+                    responseAt: new Date()
+                }
+            )
+        }
+
+        throw err
+    }
 }
+
 
 /**
  * 加载角色模板内容并解析为 messages 数组。
  *
  * 来源优先级：
- *   1. 自定义角色（processConfig.role）
+ *   1. 自定义角色（roleDescription）
  *   2. 文件模板 data/roles/<data>.txt
- *   3. 文件读取失败时回退到 processConfig.role
+ *   3. 文件读取失败时回退到 roleDescription
  *
  * @param {ProcessConfig} processConfig - 流程配置
  *
  * @returns {Promise<Array<{role:string,content:string}>>} - 处理后的角色消息数组
  */
 async function loadRolePrompt(processConfig) {
+
     // 获取角色模板种类
     const tpl = processConfig.roleTemplate
 
     // 如果为自定义模板
     if (!tpl || tpl === "custom") {
-        return processConfig.role ? [{role: "system", content: processConfig.role}] : []
+        return processConfig.roleDescription ? [{role: "system", content: processConfig.roleDescription}] : []
     }
 
     // 角色模板路径
@@ -434,7 +565,7 @@ async function loadRolePrompt(processConfig) {
         console.warn(`读取角色模板文件失败：${filePath}`, err.message)
     }
 
-    return processConfig.role ? [{role: "system", content: processConfig.role}] : []
+    return processConfig.roleDescription ? [{role: "system", content: processConfig.roleDescription}] : []
 }
 
 /**
@@ -465,6 +596,46 @@ async function getModelClient(modelId) {
 }
 
 /**
+ * 获取同一个 msg_id 的下一个 msg_seq（自增序号）。
+ *
+ * QQ 群聊被动回复通常要求：
+ * - 同一个 msg_id 可以回复多次，但需要携带 msg_seq 且递增
+ * - 被动回复存在时间窗口（例如 5 分钟），过期后应重置序号
+ * - 被动回复次数限制 5 次
+ *
+ * @param {string} replyToMsgId - QQ 事件里的 msg_id（你代码里的 replyToMsgId）
+ * @param {number} [ttlMs=300000] - 缓存有效期毫秒数，默认 5 分钟
+ * @param {number} [maxSeq=5] - 最大允许的 msg_seq 默认 5
+ *
+ * @returns {number|null} - 下一个 msg_seq；如果超过 maxSeq，返回 null（表示不要再回复了）
+ */
+function nextMsgSeq(replyToMsgId, ttlMs = 5 * 60 * 1000, maxSeq = 5) {
+    const nowMs = Date.now()
+
+    const cached = msgSeqCache.get(replyToMsgId)
+
+    // 未命中缓存 or 已过期：从 1 开始
+    if (!cached || cached.expiresAtMs <= nowMs) {
+        msgSeqCache.set(replyToMsgId, {
+            currentMsgSeq: 1, expiresAtMs: nowMs + ttlMs
+        })
+        return 1
+    }
+
+    const nextSeq = cached.currentMsgSeq + 1
+
+    // 超过上限：返回 null，让调用方决定是否跳过发送
+    if (nextSeq > maxSeq) {
+        return null
+    }
+
+    cached.currentMsgSeq = nextSeq
+    cached.expiresAtMs = nowMs + ttlMs
+
+    return nextSeq
+}
+
+/**
  * 发送 QQ 群文本消息（仅支持被动消息）。
  *
  * 被动消息要求：
@@ -484,12 +655,19 @@ async function sendGroupTextMessage(botConfig, groupOpenId, content, replyToMsgI
         return
     }
 
+    // 如果消息回复次数达到上限
+    const msgSeq = nextMsgSeq(replyToMsgId)
+    if (msgSeq == null) {
+        console.warn("同一 msg_id 回复次数已达上限，跳过发送：", replyToMsgId)
+        return
+    }
+
     const accessToken = await getAccessToken(botConfig)
 
-    const url = `https://api.sgroup.qq.com/v2/groups/${groupOpenId}/messages`
+    const url = `https://mouse.kielx.cn/qq-api/v2/groups/${groupOpenId}/messages`
 
     const body = {
-        content, msg_type: 0, msg_id: replyToMsgId
+        content, msg_type: 0, msg_id: replyToMsgId, msg_seq: msgSeq
     }
 
     const res = await axios.post(url, body, {

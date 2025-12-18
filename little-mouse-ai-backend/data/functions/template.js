@@ -3,11 +3,11 @@
  *
  * 这是一个最基础的模板文件，用于：
  *   - 接收参数 args
- *   - 返回字符串或对象
+ *   - 返回字符串
  *
  * @param {string} args - 用户命令后跟随的参数文本
  *
- * @returns {string|Object} - 返回的内容会被 runFunction() 自动处理
+ * @returns {string} - 返回的内容会被 runFunction() 自动处理
  */
 export default async function (args) {
 

@@ -1,7 +1,8 @@
 import {
-    deleteProcessConfigById,
+    deleteProcessConfigById, getFunctionJsList,
     getModelsByModelId,
     getProcessConfigList,
+    getRoleTxtList,
     saveProcessConfig
 } from "../services/processService.js"
 
@@ -130,6 +131,25 @@ export const deleteConfig = async (req, res) => {
     }
 }
 
+/**
+ * 根据模型配置 ID 获取该模型下可用的模型列表。
+ *
+ * 前端传入 modelId（对应 ModelConfig.id），
+ * 后端会读取模型配置并调用模型服务获取可用模型。
+ *
+ * @example
+ * // 前端请求示例：
+ * GET /process/models/deepseek-chat
+ *
+ * // 返回示例：
+ * {
+ *   "success": true,
+ *   "data": [
+ *     { "id": "deepseek-chat" },
+ *     { "id": "deepseek-reasoner" }
+ *   ]
+ * }
+ */
 export const getModels = async (req, res) => {
     try {
         const modelId = req.params.modelId;
@@ -155,3 +175,78 @@ export const getModels = async (req, res) => {
         });
     }
 };
+
+
+/**
+ * 获取 roles 目录下的所有角色模板名称。
+ *
+ * 仅返回文件名，不包含 .txt 后缀，
+ * 用于前端下拉选择角色模板。
+ *
+ * 数据来源：data/roles/*.txt
+ *
+ * @example
+ * // 前端请求示例：
+ * GET /process/roles
+ *
+ * // 返回示例：
+ * {
+ *   "success": true,
+ *   "data": [
+ *     "catgirl",
+ *     "assistant"
+ *   ]
+ * }
+ */
+export async function getRoles(req, res) {
+    try {
+        const list = await getRoleTxtList()
+
+        res.json({
+            success: true,
+            data: list
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}
+
+/**
+ * 获取 templates 目录下的所有模板脚本文件名
+ *
+ * 返回完整文件名（包含 .js 后缀），
+ * 用于前端下拉选择模板。
+ *
+ * 数据来源：data/templates/*.js
+ *
+ * @example
+ * // 前端请求示例：
+ * GET /process/functions
+ *
+ * // 返回示例：
+ * {
+ *   "success": true,
+ *   "data": [
+ *     "help.js",
+ *     "clear.js"
+ *   ]
+ * }
+ */
+export async function getFunctions(req, res) {
+    try {
+        const list = await getFunctionJsList()
+
+        res.json({
+            success: true,
+            data: list
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        })
+    }
+}

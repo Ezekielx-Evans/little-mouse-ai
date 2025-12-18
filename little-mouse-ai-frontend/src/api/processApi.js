@@ -25,3 +25,15 @@ export const getModels = async (modelId) => {
     const res = await instance.get(`/process/models/${modelId}`);
     return res.data;
 };
+
+// 获取已有的角色模板列表
+export const getRoleTxtList = async () => {
+    const res = await instance.get('/process/roles')
+    return res.data
+}
+
+// 获取已有的功能文件列表
+export const getFunctionJsList = async () => {
+    const res = await instance.get('/process/functions')
+    return res.data
+}

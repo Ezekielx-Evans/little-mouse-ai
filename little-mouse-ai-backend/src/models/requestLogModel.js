@@ -1,12 +1,16 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
 
 const requestLogSchema = new mongoose.Schema({
-    request: mongoose.Schema.Types.Mixed,           // 请求 JSON
-    response: mongoose.Schema.Types.Mixed,          // 响应 JSON
+    request: mongoose.Schema.Types.Mixed,
+    response: mongoose.Schema.Types.Mixed,
     modelId: String,
     processId: String,
     botId: String,
-    createdAt: { type: Date, default: Date.now }    // 创建时间
-});
+    status: String,
+    requestAt: Date,
+    responseAt: Date,
+    durationMs: Number,
+    tokens: Number
+})
 
-export default mongoose.model("RequestLog", requestLogSchema);
+export default mongoose.model("RequestLog", requestLogSchema)
