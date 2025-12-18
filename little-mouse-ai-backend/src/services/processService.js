@@ -6,8 +6,6 @@ import ModelConfig from "../models/modelConfigModel.js"
 import ProcessConfig from "../models/processConfigModel.js"
 import RequestLog from "../models/requestLogModel.js"
 
-// 流程对话记忆
-const conversationMemory = new Map()
 
 // 储存对话条数，最多 20 条 message = 10 轮对话
 const MAX_CONVERSATION_MESSAGES = 20
@@ -322,7 +320,7 @@ async function runFunction(processConfig, command, args) {
         // 每个模板必须 export default 一个函数
         if (typeof fn === "function") {
 
-            const result = await fn(args);
+            const result = await fn(processConfig, args);
 
             return typeof result === "string" ? result : JSON.stringify(result);
         }
@@ -403,6 +401,52 @@ function parseRoleMessages(text) {
     return messages
 }
 
+/**
+ * 从 RequestLog 中加载最近 N 条对话作为上下文
+ *
+ * @param {string} processId
+ * @param {number} maxMessages 默认 20
+ * @returns {Promise<Array<{role:string, content:string}>>}
+ */
+async function loadConversationHistoryFromDB(processId, maxMessages = 20) {
+
+    // 一条记录 = 一轮（user + assistant）
+    // 所以最多取 maxMessages / 2 条记录
+    const maxRounds = Math.ceil(maxMessages / 2)
+
+    const logs = await RequestLog.find({
+        processId, status: "success"
+    })
+        .sort({requestAt: -1})
+        .limit(maxRounds)
+        .lean()
+
+    const messages = []
+
+    // 倒序恢复时间顺序
+    for (const log of logs.reverse()) {
+
+        const reqMsgs = log.request?.messages ?? []
+        for (const m of reqMsgs) {
+            if (m.role === "user" || m.role === "assistant") {
+                messages.push({
+                    role: m.role, content: m.content
+                })
+            }
+        }
+
+        const assistantMsg = log.response?.choices?.[0]?.message
+
+        if (assistantMsg?.content) {
+            messages.push({
+                role: "assistant", content: assistantMsg.content
+            })
+        }
+    }
+
+    // 最终再裁剪一次，确保不超过 maxMessages
+    return messages.slice(-maxMessages)
+}
 
 /**
  * 执行角色流程。
@@ -423,7 +467,7 @@ async function playRole(processConfig, userMessage) {
     const memoryKey = processConfig.id
 
     // 读取历史对话，最多 MAX_CONVERSATION_MESSAGES（默认 20） 条
-    const historyMessages = conversationMemory.get(memoryKey) ?? []
+    const historyMessages = await loadConversationHistoryFromDB(processConfig.id)
 
     // 加载角色预设
     const roleMessages = await loadRolePrompt(processConfig)
@@ -444,8 +488,7 @@ async function playRole(processConfig, userMessage) {
 
     // 插入当前用户的对话
     messages.push({
-        role: "user",
-        content: userMessage
+        role: "user", content: userMessage
     })
 
     // 记录请求开始的时间
@@ -460,52 +503,28 @@ async function playRole(processConfig, userMessage) {
     try {
         // 请求前：创建请求记录（status: "pending"）
         requestLog = await RequestLog.create({
-            modelId: processConfig.modelId,
-            processId: processConfig.id,
-            botId: processConfig.botId,
+            modelId: processConfig.modelId, processId: processConfig.id, botId: processConfig.botId,
 
             status: "pending",
 
             request: {
-                model: processConfig.model,
-                messages
+                model: processConfig.model, messages
             },
 
-            tokens: 0,
-            requestAt
+            tokens: 0, requestAt
         })
 
         // 调用大模型
         const res = await llm.chat.completions.create({
-            model: processConfig.model,
-            messages
+            model: processConfig.model, messages
         })
 
-        const assistantReply =
-            res.choices?.[0]?.message?.content || ""
-
-        // 更新对话记忆（只保存 user / assistant）
-        const nextHistory = [
-            ...historyMessages,
-            {role: "user", content: userMessage},
-            {role: "assistant", content: assistantReply}
-        ]
-
-        conversationMemory.set(
-            memoryKey,
-            nextHistory.slice(-MAX_CONVERSATION_MESSAGES)
-        )
+        const assistantReply = res.choices?.[0]?.message?.content || ""
 
         // 更新请求成功记录
-        await RequestLog.updateOne(
-            {_id: requestLog._id},
-            {
-                status: "success",
-                response: res,
-                tokens: res.usage?.total_tokens ?? 0,
-                responseAt: new Date()
-            }
-        )
+        await RequestLog.updateOne({_id: requestLog._id}, {
+            status: "success", response: res, tokens: res.usage?.total_tokens ?? 0, responseAt: new Date()
+        })
 
         return assistantReply
 
@@ -513,16 +532,11 @@ async function playRole(processConfig, userMessage) {
 
         // 更新请求失败记录
         if (requestLog) {
-            await RequestLog.updateOne(
-                {_id: requestLog._id},
-                {
-                    status: "error",
-                    response: {
-                        message: err.message
-                    },
-                    responseAt: new Date()
-                }
-            )
+            await RequestLog.updateOne({_id: requestLog._id}, {
+                status: "error", response: {
+                    message: err.message
+                }, responseAt: new Date()
+            })
         }
 
         throw err
