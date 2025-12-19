@@ -24,8 +24,7 @@ import {
  *   "botId": "bot-001",
  *   "modelId": "deepseek-chat",
  *   "triggerCommand": "",
- *   "role": "你是一只可爱的猫娘",
- *   "image": "/src/assets/images/catgirl.png"
+ *   "role": "你是一只可爱的猫娘"
  * }
  */
 export const saveConfig = async (req, res) => {

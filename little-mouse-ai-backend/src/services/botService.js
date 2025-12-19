@@ -13,7 +13,6 @@ import BotConfig from '../models/botConfigModel.js'
  *   "id": "bot-001",
  *   "appId": "APP-202401",
  *   "appSecret": "SECRET-58FJ2",
- *   "image": "/src/assets/images/little-mouse.png",
  *   "name": "客服助手",
  *   "token": "TOKEN-91XZ3"
  * })

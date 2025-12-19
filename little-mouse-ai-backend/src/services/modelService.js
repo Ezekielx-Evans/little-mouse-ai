@@ -15,11 +15,23 @@ import ModelConfig from '../models/modelConfigModel.js'
  *   "name": "DeepSeek Chat",
  *   "baseUrl": "https://api.deepseek.com/v1",
  *   "apiKey": "sk-15c040979d3e4b26abae62b09d3adfd5",
- *   "image": "/src/assets/images/deepseek.png"
+ *   "processId": "flow-001"
  * })
  */
 export async function saveModelConfig(data) {
     const filter = { id: data.id };
+
+    // 若指定流程 ID，检查是否已被其他配置占用，是则报错阻止重复绑定
+    if (data.processId) {
+        const occupied = await ModelConfig.findOne({
+            processId: data.processId,
+            id: { $ne: data.id }
+        });
+
+        if (occupied) {
+            throw new Error("该流程已绑定其他大模型配置，请先解绑后再选择");
+        }
+    }
 
     // new: true 返回更新后的文档
     // upsert: true 未找到则创建新文档

@@ -10,7 +10,6 @@ const processConfigSchema = new mongoose.Schema({
     model: String,
     roleTemplate: String,
     roleDescription: String,
-    image: String,
     functions: [
         {
             command: String,
