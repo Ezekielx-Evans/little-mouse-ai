@@ -406,7 +406,7 @@ onMounted(() => {
                                 @click="handleSelect(item.id)"
                             >
                                 <div class="config-body">
-                                    <el-image src="/src/assets/images/processImage.png" fit="cover"/>
+                                    <el-image fit="cover" src="/src/assets/images/processImage.png"/>
                                     <div class="config-content">
                                         <div class="config-name">{{ item.name }}</div>
                                         <div class="config-meta">
@@ -497,14 +497,16 @@ onMounted(() => {
                                 <template v-if="currentConfig.processType === 'role'">
 
                                     <!-- 模型 ID -->
-                                    <el-form-item prop="modelId">
+                                    <el-form-item prop="modelId" style="gap: 10px">
                                         <template #label>
-                                            <span class="form-label">模型 ID</span>
-                                            <el-tooltip content="一个模型只能被一个流程绑定">
-                                                <el-icon class="label-icon">
-                                                    <Warning />
-                                                </el-icon>
-                                            </el-tooltip>
+                                            <div class="form-label-with-icon">
+                                                <span>模型 ID</span>
+                                                <el-tooltip content="一个模型只能被一个流程绑定">
+                                                    <el-icon>
+                                                        <Warning/>
+                                                    </el-icon>
+                                                </el-tooltip>
+                                            </div>
                                         </template>
                                         <el-select v-model="currentConfig.modelId"
                                                    :disabled="isDisabled"
@@ -788,17 +790,6 @@ onMounted(() => {
     transform: translateY(-4px);
 }
 
-.form-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.label-icon {
-    color: #909399;
-    cursor: pointer;
-}
-
 .config-body {
     display: flex;
     align-items: center;
@@ -864,5 +855,11 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.form-label-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 </style>

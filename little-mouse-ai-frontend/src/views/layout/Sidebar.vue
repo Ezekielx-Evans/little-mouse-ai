@@ -11,7 +11,7 @@ import SettingIcon from '@/icons/SettingIcon.vue'
     <el-container>
         <!-- Logo + Title -->
         <el-header class="logo-title">
-            <el-image class="logo" src="src/assets/images/little-mouse.png"/>
+            <el-image class="logo" src="src/assets/images/botImage.png"/>
             <span class="title">Mouse AI</span>
         </el-header>
         <!-- Menu -->
