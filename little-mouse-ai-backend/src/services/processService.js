@@ -48,18 +48,6 @@ const msgSeqCache = new Map()
 export async function saveProcessConfig(data) {
     const filter = {id: data.id}
 
-    // 若选择的大模型配置已被其他流程占用，直接报错阻止重复绑定
-    if (data.modelId) {
-        const occupied = await ProcessConfig.findOne({
-            modelId: data.modelId,
-            id: {$ne: data.id}
-        })
-
-        if (occupied) {
-            throw new Error("该大模型配置已绑定其他流程，不能重复绑定！")
-        }
-    }
-
     // new: true 返回更新后的文档
     // upsert: true 若未找到则插入新文档
     const options = {new: true, upsert: true}

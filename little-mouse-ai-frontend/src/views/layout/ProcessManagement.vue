@@ -1,5 +1,5 @@
 <script setup>
-import {Delete, Edit, Plus} from '@element-plus/icons-vue'
+import {Delete, Edit, Plus, Warning} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {onMounted, ref} from 'vue'
 import {
@@ -288,12 +288,36 @@ const removeFunction = (idx) => {
     currentConfig.value.functions.splice(idx, 1)
 }
 
+// 模型 ID 唯一性校验
+const validateModelIdUnique = (rule, value, callback) => {
+    if (!currentConfig.value || currentConfig.value.processType !== 'role') {
+        return callback()
+    }
+
+    if (!value) {
+        return callback()
+    }
+
+    const isDuplicate = configs.value.some(
+        config => config.id !== currentConfig.value.id && config.modelId === value
+    )
+
+    if (isDuplicate) {
+        return callback(new Error('该模型已被其他流程绑定'))
+    }
+
+    callback()
+}
+
 // 表单校验规则
 const rules = ref({
     name: [{required: true, message: '名称不能为空', trigger: 'blur'}],
     processType: [{required: true, message: '请选择流程种类', trigger: 'blur'}],
     botId: [{required: true, message: '机器人 ID 不能为空', trigger: 'blur'}],
-    modelId: [{required: true, message: '模型 ID 不能为空', trigger: 'blur'}],
+    modelId: [
+        {required: true, message: '模型 ID 不能为空', trigger: 'blur'},
+        {validator: validateModelIdUnique, trigger: ['change', 'blur']},
+    ],
     model: [{required: true, message: '模型不能为空', trigger: 'blur'}],
     preset: [{required: true, message: '角色不能为空', trigger: 'blur'}],
 
@@ -305,7 +329,6 @@ const submitForm = async (formRef) => {
 
     formRef.validate(async (valid) => {
         if (!valid) {
-            ElMessage.error('请检查表单输入是否正确！')
             return
         }
 
@@ -474,7 +497,15 @@ onMounted(() => {
                                 <template v-if="currentConfig.processType === 'role'">
 
                                     <!-- 模型 ID -->
-                                    <el-form-item label="模型 ID" prop="modelId">
+                                    <el-form-item prop="modelId">
+                                        <template #label>
+                                            <span class="form-label">模型 ID</span>
+                                            <el-tooltip content="一个模型只能被一个流程绑定">
+                                                <el-icon class="label-icon">
+                                                    <Warning />
+                                                </el-icon>
+                                            </el-tooltip>
+                                        </template>
                                         <el-select v-model="currentConfig.modelId"
                                                    :disabled="isDisabled"
                                                    :loading="modelIdLoading"
@@ -755,6 +786,17 @@ onMounted(() => {
 
 .config-card:hover {
     transform: translateY(-4px);
+}
+
+.form-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.label-icon {
+    color: #909399;
+    cursor: pointer;
 }
 
 .config-body {
