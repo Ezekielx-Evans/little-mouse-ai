@@ -56,7 +56,7 @@ export async function saveProcessConfig(data) {
         })
 
         if (occupied) {
-            throw new Error("该大模型配置已绑定其他流程，不能重复绑定")
+            throw new Error("该大模型配置已绑定其他流程，不能重复绑定！")
         }
     }
 
