@@ -383,7 +383,7 @@ onMounted(() => {
                                 @click="handleSelect(item.id)"
                             >
                                 <div class="config-body">
-                                    <el-image :src="item.image" fit="cover"/>
+                                    <el-image src="/src/assets/images/processImage.png" fit="cover"/>
                                     <div class="config-content">
                                         <div class="config-name">{{ item.name }}</div>
                                         <div class="config-meta">
