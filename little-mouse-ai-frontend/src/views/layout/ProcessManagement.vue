@@ -203,7 +203,7 @@ const handleAdd = () => {
         botId: '',
         modelId: '',
         model: '',
-        roleTemplate: 'custom',
+        preset: 'custom',
         roleDescription: '',
         functions: [{command: '', file: '', desc: ''}],
         image: '/src/assets/images/deepseek.png'
@@ -507,7 +507,7 @@ onMounted(() => {
                                     <!-- 角色预设 -->
                                     <el-form-item label="角色预设" prop="preset">
                                         <el-select
-                                            v-model="currentConfig.roleTemplate"
+                                            v-model="currentConfig.preset"
                                             :disabled="isDisabled"
                                             :loading="templateLoading"
                                             placeholder="请选择角色预设"
@@ -524,7 +524,7 @@ onMounted(() => {
 
                                     <!-- 角色描述 -->
                                     <el-form-item
-                                        v-if="currentConfig.roleTemplate === 'custom'"
+                                        v-if="currentConfig.preset === 'custom'"
                                         label="角色描述"
                                     >
                                         <el-input
