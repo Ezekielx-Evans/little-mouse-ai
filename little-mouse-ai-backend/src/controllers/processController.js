@@ -19,12 +19,12 @@ import {
  *   "id": "flow-001",
  *   "name": "猫娘对话流程",
  *   "enabled": true,
- *   "templateType": "roleTemplate",
- *   "data": "catgirl",
+ *   "processType": "role",
+ *   "preset": "catgirl",
  *   "botId": "bot-001",
  *   "modelId": "deepseek-chat",
- *   "triggerCommand": "",
- *   "role": "你是一只可爱的猫娘"
+ *   "model": "deepseek-chat",
+ *   "roleDescription": "你是一只可爱的猫娘"
  * }
  */
 export const saveConfig = async (req, res) => {
@@ -60,8 +60,8 @@ export const saveConfig = async (req, res) => {
  *       "_id": "6923106e69af27de21770111",
  *       "id": "flow-001",
  *       "name": "猫娘对话流程",
- *       "templateType": "roleTemplate",
- *       "data": "catgirl",
+ *       "processType": "role",
+ *       "preset": "catgirl",
  *       ...
  *     }
  *   ]

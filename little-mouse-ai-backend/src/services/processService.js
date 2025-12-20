@@ -37,12 +37,12 @@ const msgSeqCache = new Map()
  *   "id": "flow-001",
  *   "name": "猫娘对话流程",
  *   "enabled": true,
- *   "templateType": "roleTemplate",
- *   "data": "catgirl",
+ *   "processType": "role",
+ *   "preset": "catgirl",
  *   "botId": "bot-001",
  *   "modelId": "deepseek-chat",
- *   "triggerCommand": "",
- *   "role": "你是一只可爱的猫娘"
+ *   "model": "deepseek-chat",
+ *   "roleDescription": "你是一只可爱的猫娘"
  * })
  */
 export async function saveProcessConfig(data) {
@@ -79,13 +79,13 @@ export async function saveProcessConfig(data) {
  *   {
  *     id: "flow-001",
  *     name: "猫娘对话流程",
- *     templateType: "roleTemplate",
+ *     processType: "role",
  *     ...
  *   },
  *   {
  *     id: "flow-002",
  *     name: "战绩查询流程",
- *     templateType: "functionTemplate",
+ *     processType: "function",
  *     ...
  *   }
  * ]
@@ -570,7 +570,7 @@ async function playRole(processConfig, userMessage) {
 async function loadRolePrompt(processConfig) {
 
     // 获取角色模板种类
-    const tpl = processConfig.roleTemplate
+    const tpl = processConfig.preset
 
     // 如果为自定义模板
     if (!tpl || tpl === "custom") {
