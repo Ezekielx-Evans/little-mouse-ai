@@ -1,5 +1,5 @@
 <script setup>
-import {Delete, Edit, Plus, QuestionFilled} from '@element-plus/icons-vue'
+import {Delete, Edit, Plus, Warning} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {onMounted, ref} from 'vue'
 import {
@@ -329,7 +329,6 @@ const submitForm = async (formRef) => {
 
     formRef.validate(async (valid) => {
         if (!valid) {
-            ElMessage.error('请检查表单输入是否正确！')
             return
         }
 
@@ -503,7 +502,7 @@ onMounted(() => {
                                             <span class="form-label">模型 ID</span>
                                             <el-tooltip content="一个模型只能被一个流程绑定">
                                                 <el-icon class="label-icon">
-                                                    <QuestionFilled />
+                                                    <Warning />
                                                 </el-icon>
                                             </el-tooltip>
                                         </template>
