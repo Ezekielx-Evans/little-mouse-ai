@@ -6,7 +6,6 @@ const botConfigSchema = new mongoose.Schema({
     appId: String,
     appSecret: String,
     token: String,
-    image: String
 });
 
 export default mongoose.model("BotConfig", botConfigSchema);

@@ -14,8 +14,7 @@ import ModelConfig from '../models/modelConfigModel.js'
  *   "id": "model-001",
  *   "name": "DeepSeek Chat",
  *   "baseUrl": "https://api.deepseek.com/v1",
- *   "apiKey": "sk-15c040979d3e4b26abae62b09d3adfd5",
- *   "image": "/src/assets/images/deepseek.png"
+ *   "apiKey": "sk-15c040979d3e4b26abae62b09d3adfd5"
  * })
  */
 export async function saveModelConfig(data) {
