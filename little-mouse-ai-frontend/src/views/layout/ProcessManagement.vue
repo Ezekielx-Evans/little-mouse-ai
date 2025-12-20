@@ -191,26 +191,39 @@ const handleSelect = async (id) => {
 }
 
 // 添加配置时的行为
-const handleAdd = () => {
+const handleAdd = async () => {
     const id = `process-${Date.now()}`
     const index = configs.value.length + 1
 
-    configs.value.push({
-        id,
-        name: `流程配置 ${index}`,
-        enabled: false,
-        processType: 'function',
-        botId: '',
-        modelId: '',
-        model: '',
-        preset: 'custom',
-        roleDescription: '',
-        functions: [{command: '', file: '', desc: ''}],
-        image: '/src/assets/images/deepseek.png'
-    })
+    try {
+        loading.value = true
 
-    handleSelect(id)
-    ElMessage.success('已新增流程配置')
+        const res = await saveProcessConfig({
+            id,
+            name: `流程配置 ${index}`,
+            enabled: false,
+            processType: 'function',
+            botId: '',
+            modelId: '',
+            model: '',
+            preset: 'custom',
+            roleDescription: '',
+            functions: [{command: '', file: '', desc: ''}],
+        })
+
+        if (!res.success) {
+            return ElMessage.error(res.message || '新增失败')
+        }
+
+        await getConfigs()
+        handleSelect(id)
+        ElMessage.success('已新增流程配置')
+    } catch (err) {
+        console.error(err)
+        ElMessage.error(`新增失败：${err.message}`)
+    } finally {
+        loading.value = false
+    }
 }
 
 // 点击编辑按钮时的行为
@@ -228,7 +241,6 @@ const handleDelete = (config) => {
     })
         .then(async () => {
             try {
-
                 loading.value = true
 
                 const res = await deleteProcessConfig(config.id)
@@ -239,7 +251,6 @@ const handleDelete = (config) => {
                     // 刷新列表
                     await getConfigs()
 
-                    // 更新选中项
                     selectedId.value = ''
                     currentConfig.value = null
                 } else {

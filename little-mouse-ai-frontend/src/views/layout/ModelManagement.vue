@@ -47,22 +47,33 @@ const handleSelect = (id) => {
 }
 
 // 添加配置
-const handleAdd = () => {
+const handleAdd = async () => {
     const index = configs.value.length + 1
     const id = `model-${Date.now()}`
-    const name = `模型配置 ${index}`
-    const image = '/src/assets/images/deepseek.png'
 
-    configs.value.push({
-        id,
-        name,
-        baseUrl: 'https://api.deepseek.com/v1',
-        apiKey: '',
-        image,
-    })
+    try {
+        loading.value = true
 
-    handleSelect(id)
-    ElMessage.success('已新增模型配置')
+        const res = await saveModelConfig({
+            id,
+            name: `模型配置 ${index}`,
+            baseUrl: 'https://api.deepseek.com/v1',
+            apiKey: '',
+        })
+
+        if (!res.success) {
+            return ElMessage.error(res.message || '新增失败')
+        }
+
+        await getConfigs()
+        handleSelect(id)
+        ElMessage.success('已新增模型配置')
+    } catch (err) {
+        console.error(err)
+        ElMessage.error(`新增失败：${err.message}`)
+    } finally {
+        loading.value = false
+    }
 }
 
 // 编辑配置
@@ -80,7 +91,6 @@ const handleDelete = (config) => {
     })
         .then(async () => {
             try {
-
                 loading.value = true
 
                 const res = await deleteModelConfig(config.id)
@@ -91,7 +101,6 @@ const handleDelete = (config) => {
                     // 刷新列表
                     await getConfigs()
 
-                    // 更新选中项
                     selectedId.value = ''
                     currentConfig.value = null
                 } else {
