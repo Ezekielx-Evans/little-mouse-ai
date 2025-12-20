@@ -46,23 +46,34 @@ const handleSelect = (id) => {
 }
 
 // 添加配置时的行为
-const handleAdd = () => {
+const handleAdd = async () => {
     const index = configs.value.length + 1
     const id = `bot-${Date.now()}`
-    const name = `机器人配置 ${index}`
-    const image = '/src/assets/images/little-mouse.png'
 
-    configs.value.push({
-        id,
-        name,
-        appId: '',
-        appSecret: '',
-        token: '',
-        image,
-    })
+    try {
+        loading.value = true
 
-    handleSelect(id)
-    ElMessage.success('已新增机器人配置')
+        const res = await saveBotConfig({
+            id,
+            name: `机器人配置 ${index}`,
+            appId: '',
+            appSecret: '',
+            token: '',
+        })
+
+        if (!res.success) {
+            return ElMessage.error(res.message || '新增失败')
+        }
+
+        await getConfigs()
+        handleSelect(id)
+        ElMessage.success('已新增机器人配置')
+    } catch (err) {
+        console.error(err)
+        ElMessage.error(`新增失败：${err.message}`)
+    } finally {
+        loading.value = false
+    }
 }
 
 // 点击编辑按钮时的行为
