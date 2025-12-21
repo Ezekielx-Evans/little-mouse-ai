@@ -7,9 +7,6 @@ import ProcessConfig from "../models/processConfigModel.js"
 import RequestLog from "../models/requestLogModel.js"
 
 
-// 储存对话条数，最多 20 条 message = 10 轮对话
-const MAX_CONVERSATION_MESSAGES = 20
-
 // 项目根路径下的 data 目录
 const DATA_ROOT = path.resolve(process.cwd(), "data")
 
@@ -46,6 +43,26 @@ const msgSeqCache = new Map()
  * })
  */
 export async function saveProcessConfig(data) {
+
+    // 如果保存的流程种类是角色配置且填写了 botId 则一个机器人只能绑定一个角色配置的验证
+    if (data.processType === "role" && data.botId) {
+
+        // 查询条件：同一个 bot 下的角色流程
+        const query = {botId: data.botId, processType: "role"}
+
+        // 如果是编辑流程，则排除当前这条记录
+        if (data.id) {
+            query.id = {$ne: data.id}
+        }
+
+        // 查找是否已存在角色流程
+        const existing = await ProcessConfig.findOne(query)
+
+        if (existing) {
+            throw new Error("该机器人已绑定角色对话流程，不能重复绑定")
+        }
+    }
+
     const filter = {id: data.id}
 
     // new: true 返回更新后的文档
