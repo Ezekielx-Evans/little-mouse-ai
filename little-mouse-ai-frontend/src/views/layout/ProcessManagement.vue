@@ -288,22 +288,25 @@ const removeFunction = (idx) => {
     currentConfig.value.functions.splice(idx, 1)
 }
 
-// 模型 ID 唯一性校验
-const validateModelIdUnique = (rule, value, callback) => {
+// 机器人配置绑定模型的唯一性校验
+const validateBotModelUnique = (rule, value, callback) => {
     if (!currentConfig.value || currentConfig.value.processType !== 'role') {
         return callback()
     }
 
-    if (!value) {
+    if (!value || !currentConfig.value.botId) {
         return callback()
     }
 
-    const isDuplicate = configs.value.some(
-        config => config.id !== currentConfig.value.id && config.modelId === value
+    const isConflict = configs.value.some(config =>
+        config.id !== currentConfig.value.id
+        && config.processType === 'role'
+        && config.botId === currentConfig.value.botId
+        && config.modelId !== value
     )
 
-    if (isDuplicate) {
-        return callback(new Error('该模型已被其他流程绑定'))
+    if (isConflict) {
+        return callback(new Error('该机器人已绑定其他模型配置'))
     }
 
     callback()
@@ -316,7 +319,7 @@ const rules = ref({
     botId: [{required: true, message: '机器人 ID 不能为空', trigger: 'blur'}],
     modelId: [
         {required: true, message: '模型 ID 不能为空', trigger: 'blur'},
-        {validator: validateModelIdUnique, trigger: ['change', 'blur']},
+        {validator: validateBotModelUnique, trigger: ['change', 'blur']},
     ],
     model: [{required: true, message: '模型不能为空', trigger: 'blur'}],
     preset: [{required: true, message: '角色不能为空', trigger: 'blur'}],
@@ -501,7 +504,7 @@ onMounted(() => {
                                         <template #label>
                                             <div class="form-label-with-icon">
                                                 <span>模型 ID</span>
-                                                <el-tooltip content="一个模型只能被一个流程绑定">
+                                                <el-tooltip content="同一机器人只能绑定一个模型配置">
                                                     <el-icon>
                                                         <Warning/>
                                                     </el-icon>

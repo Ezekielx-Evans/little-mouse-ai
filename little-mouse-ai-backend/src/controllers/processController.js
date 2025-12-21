@@ -36,7 +36,9 @@ export const saveConfig = async (req, res) => {
             data: result
         })
     } catch (error) {
-        res.status(500).json({
+        const status = error?.statusCode ?? 500
+
+        res.status(status).json({
             success: false,
             message: error.message
         })

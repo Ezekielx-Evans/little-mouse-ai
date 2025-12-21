@@ -46,6 +46,21 @@ const msgSeqCache = new Map()
  * })
  */
 export async function saveProcessConfig(data) {
+    if (data.processType === "role" && data.botId && data.modelId) {
+        const conflict = await ProcessConfig.findOne({
+            botId: data.botId,
+            id: {$ne: data.id},
+            processType: "role",
+            modelId: {$ne: data.modelId}
+        })
+
+        if (conflict) {
+            const err = new Error(`机器人 ${data.botId} 已绑定模型配置 ${conflict.modelId}`)
+            err.statusCode = 400
+            throw err
+        }
+    }
+
     const filter = {id: data.id}
 
     // new: true 返回更新后的文档
