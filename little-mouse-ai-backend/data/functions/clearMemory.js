@@ -1,4 +1,5 @@
 import RequestLog from "../../src/models/requestLogModel.js";
+import RoleConversationHistory from "../../src/models/roleConversationHistoryModel.js";
 
 /**
  * 清空当前流程的对话记录
@@ -10,12 +11,15 @@ import RequestLog from "../../src/models/requestLogModel.js";
  */
 export default async function (processConfig, args) {
 
-    const {id: processId} = processConfig;
+    const {id: processId, botId} = processConfig;
 
     // 删除该流程下的所有对话记录
-    const result = await RequestLog.deleteMany({
+    const [requestLogs, roleHistory] = await Promise.all([
+        RequestLog.deleteMany({
         processId
-    });
+        }),
+        botId ? RoleConversationHistory.deleteOne({botId}) : {deletedCount: 0}
+    ]);
 
-    return `对话历史已清除（共 ${result.deletedCount} 条）`;
+    return `对话历史已清除（请求记录 ${requestLogs.deletedCount} 条，角色记忆 ${roleHistory.deletedCount || 0} 条）`;
 }

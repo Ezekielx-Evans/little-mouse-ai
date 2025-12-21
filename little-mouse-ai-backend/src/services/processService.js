@@ -5,6 +5,7 @@ import OpenAI from "openai"
 import ModelConfig from "../models/modelConfigModel.js"
 import ProcessConfig from "../models/processConfigModel.js"
 import RequestLog from "../models/requestLogModel.js"
+import RoleConversationHistory from "../models/roleConversationHistoryModel.js"
 
 
 // 项目根路径下的 data 目录
@@ -19,6 +20,9 @@ const modelClientCache = new Map()
 // msg_id → { currentMsgSeq, expiresAtMs }
 // 用于同一条被动消息（msg_id）多次回复时，保证 msg_seq 递增，避免“消息被去重”
 const msgSeqCache = new Map()
+
+// 角色对话最大保留条数（20 轮，40 条消息）
+const MAX_ROLE_CONVERSATION_MESSAGES = 40
 
 /**
  * 保存流程配置（新增或更新）。
@@ -418,50 +422,49 @@ function parseRoleMessages(text) {
 }
 
 /**
- * 从 RequestLog 中加载最近 N 条对话作为上下文
+ * 从角色对话数据库中加载最近 N 条对话。
  *
- * @param {string} processId
- * @param {number} maxMessages 默认 20
+ * @param {string} botId
+ * @param {number} maxMessages 默认 40
  * @returns {Promise<Array<{role:string, content:string}>>}
  */
-async function loadConversationHistoryFromDB(processId, maxMessages = 20) {
+async function loadRoleConversationHistory(botId, maxMessages = MAX_ROLE_CONVERSATION_MESSAGES) {
 
-    // 一条记录 = 一轮（user + assistant）
-    // 所以最多取 maxMessages / 2 条记录
-    const maxRounds = Math.ceil(maxMessages / 2)
+    const history = await RoleConversationHistory.findOne({botId}).lean()
 
-    const logs = await RequestLog.find({
-        processId, status: "success"
-    })
-        .sort({requestAt: -1})
-        .limit(maxRounds)
-        .lean()
-
-    const messages = []
-
-    // 倒序恢复时间顺序
-    for (const log of logs.reverse()) {
-
-        const reqMsgs = log.request?.messages ?? []
-        for (const m of reqMsgs) {
-            if (m.role === "user" || m.role === "assistant") {
-                messages.push({
-                    role: m.role, content: m.content
-                })
-            }
-        }
-
-        const assistantMsg = log.response?.choices?.[0]?.message
-
-        if (assistantMsg?.content) {
-            messages.push({
-                role: "assistant", content: assistantMsg.content
-            })
-        }
+    if (!history?.messages?.length) {
+        return []
     }
 
-    // 最终再裁剪一次，确保不超过 maxMessages
-    return messages.slice(-maxMessages)
+    return history.messages.slice(-maxMessages).map(({role, content}) => ({
+        role, content
+    }))
+}
+
+/**
+ * 持久化本次对话轮次。
+ *
+ * @param {string} botId
+ * @param {Array<{role:string, content:string}>} dialogMessages
+ * @returns {Promise<void>}
+ */
+async function saveRoleConversationHistory(botId, dialogMessages) {
+
+    if (!dialogMessages?.length) return
+
+    await RoleConversationHistory.findOneAndUpdate(
+        {botId},
+        {
+            $setOnInsert: {botId},
+            $push: {
+                messages: {
+                    $each: dialogMessages,
+                    $slice: -MAX_ROLE_CONVERSATION_MESSAGES
+                }
+            }
+        },
+        {upsert: true}
+    )
 }
 
 /**
@@ -479,11 +482,8 @@ async function loadConversationHistoryFromDB(processId, maxMessages = 20) {
  */
 async function playRole(processConfig, userMessage) {
 
-    // 使用用 processId 作为对话记忆 key
-    const memoryKey = processConfig.id
-
-    // 读取历史对话，最多 MAX_CONVERSATION_MESSAGES（默认 20） 条
-    const historyMessages = await loadConversationHistoryFromDB(processConfig.id)
+    // 读取历史对话，最多 MAX_ROLE_CONVERSATION_MESSAGES（默认 40） 条
+    const historyMessages = await loadRoleConversationHistory(processConfig.botId)
 
     // 加载角色预设
     const roleMessages = await loadRolePrompt(processConfig)
@@ -536,6 +536,11 @@ async function playRole(processConfig, userMessage) {
         })
 
         const assistantReply = res.choices?.[0]?.message?.content || ""
+
+        await saveRoleConversationHistory(processConfig.botId, [
+            {role: "user", content: userMessage},
+            {role: "assistant", content: assistantReply}
+        ])
 
         // 更新请求成功记录
         await RequestLog.updateOne({_id: requestLog._id}, {
