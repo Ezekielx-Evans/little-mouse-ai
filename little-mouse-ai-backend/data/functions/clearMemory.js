@@ -1,4 +1,3 @@
-import RequestLog from "../../src/models/requestLogModel.js";
 import RoleConversationHistory from "../../src/models/roleConversationHistoryModel.js";
 
 /**
@@ -11,15 +10,10 @@ import RoleConversationHistory from "../../src/models/roleConversationHistoryMod
  */
 export default async function (processConfig, args) {
 
-    const {id: processId, botId} = processConfig;
+    const {botId} = processConfig;
 
-    // 删除该流程下的所有对话记录
-    const [requestLogs, roleHistory] = await Promise.all([
-        RequestLog.deleteMany({
-        processId
-        }),
-        botId ? RoleConversationHistory.deleteOne({botId}) : {deletedCount: 0}
-    ]);
+    // 删除该 bot 下的对话记录
+    const result = await RoleConversationHistory.deleteOne({ botId });
 
-    return `对话历史已清除（请求记录 ${requestLogs.deletedCount} 条，角色记忆 ${roleHistory.deletedCount || 0} 条）`;
+    return `对话记忆 ${result.deletedCount || 0} 条`;
 }
