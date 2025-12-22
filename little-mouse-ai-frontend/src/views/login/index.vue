@@ -123,11 +123,10 @@ const handleForgotPassword = () => {
                 v-model="remember"
                 align-center
                 class="forgot-dialog"
-                title="忘记密码"
                 width="420px"
             >
-                <p class="forgot-dialog__text">默认密码：123456</p>
-                <p class="forgot-dialog__text">忘记密码可在 little-mouse-ai-backend/config.json 的 password 字段查看</p>
+                <p>默认密码：123456</p>
+                <p>忘记密码可在 little-mouse-ai-backend/config.json 的 password 字段查看</p>
                 <template #footer>
                     <el-button type="primary" @click="remember = false">知道了</el-button>
                 </template>
@@ -214,12 +213,6 @@ const handleForgotPassword = () => {
     height: 48px;
     font-size: 16px;
     letter-spacing: 0.1em;
-}
-
-.forgot-dialog__text {
-    margin: 6px 0;
-    color: #606266;
-    line-height: 1.6;
 }
 
 </style>
