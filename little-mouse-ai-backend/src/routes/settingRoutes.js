@@ -1,5 +1,5 @@
 import express from 'express'
-import {getConfig, saveConfig, updatePassword} from '../controllers/settingsController.js'
+import {getConfig, saveConfig, updatePassword} from '../controllers/settingController.js'
 
 const router = express.Router()
 

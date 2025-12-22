@@ -3,6 +3,7 @@ import {ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {ElMessage} from 'element-plus'
 import {Lock} from '@element-plus/icons-vue'
+import {verifyLoginPassword} from "@/api/loginApi.js";
 
 const router = useRouter()
 const loginFormRef = ref()
@@ -22,15 +23,25 @@ const remember = ref(true)
 
 const handleSubmit = (formRef) => {
     if (!formRef) return
-    formRef.validate((valid) => {
-        if (valid) {
-            ElMessage.success('登录成功')
-            router.push('/')
-        } else {
+
+    formRef.validate(async (valid) => {
+        if (!valid) return
+
+        try {
+            const res = await verifyLoginPassword(loginForm.value.password)
+
+            if (res.success) {
+                ElMessage.success('登录成功')
+                await router.push('/')
+            } else {
+                ElMessage.error(res.message || '密码错误！')
+            }
+        } catch (err) {
             ElMessage.error('密码错误！')
         }
     })
 }
+
 
 </script>
 

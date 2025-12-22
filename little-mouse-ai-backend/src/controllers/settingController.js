@@ -1,4 +1,8 @@
-import {getSettingConfig, saveSettingConfig, updateSettingData} from '../services/settingsService.js'
+import {
+    getSettingConfig,
+    saveSettingConfig,
+    updateSettingData,
+} from '../services/settingService.js'
 
 export const getConfig = async (req, res) => {
     try {
