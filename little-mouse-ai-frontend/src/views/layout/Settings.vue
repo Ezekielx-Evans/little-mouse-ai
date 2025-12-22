@@ -39,7 +39,7 @@ const getCurrentService = async () => {
     }
 }
 
-// 保存表单与重置表单
+// 保存表单
 const submitServiceForm = (formRef) => {
     if (!formRef) return
 
@@ -66,6 +66,8 @@ const submitServiceForm = (formRef) => {
         }
     })
 }
+
+// 重置表单
 const resetServiceForm = (formRef) => {
     if (!formRef || !currentService.value) return
     formRef.resetFields()
