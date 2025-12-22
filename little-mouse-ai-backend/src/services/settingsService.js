@@ -35,11 +35,6 @@ const writeConfig = async (config) => {
  */
 export const getSettings = async () => {
     const config = await readConfig()
-
-    return {
-        port: config.port,
-        allowIp: config.allowIp
-    }
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import {ElMessage} from 'element-plus'
 import {onMounted, ref} from 'vue'
+import {Warning} from "@element-plus/icons-vue";
 
 // 服务配置和密码管理的表单实例
 const serviceForm = ref()
@@ -11,6 +12,7 @@ const passwordForm = ref()
 const currentService = ref({
     port: '',
     allowIp: '',
+    passwordIntervalMinutes: ''
 })
 const currentPassword = ref({
     oldPassword: '',
@@ -20,8 +22,9 @@ const currentPassword = ref({
 
 // 获取服务配置和密码
 const getCurrentService = () => {
-    currentService.value.port = '5173'
+    currentService.value.port = '28036'
     currentService.value.allowIp = '0.0.0.0'
+    currentService.value.passwordIntervalMinutes = '30'
 }
 
 // 保存表单与重置表单
@@ -165,12 +168,27 @@ onMounted(() => {
                     label-position="top"
                 >
                     <el-form-item label="运行端口" prop="port">
-                        <el-input v-model="currentService.port" placeholder="请输入运行端口"/>
+                        <el-input v-model="currentService.port" placeholder="默认 28036"/>
                     </el-form-item>
-                    <el-form-item label="允许访问的 IP" prop="allowIp">
-                        <el-input v-model="currentService.allowIp" placeholder="例如：0.0.0.0"/>
-                        <p class="form-tip">填写 0.0.0.0 即允许所有来源访问。</p>
+
+                    <el-form-item prop="allowIp">
+                        <template #label>
+                            <div class="form-label-with-icon">
+                                <span>允许访问 IP</span>
+                                <el-tooltip content="填写 0.0.0.0 即允许所有来源访问">
+                                    <el-icon>
+                                        <Warning/>
+                                    </el-icon>
+                                </el-tooltip>
+                            </div>
+                        </template>
+                        <el-input v-model="currentService.allowIp" placeholder="默认 0.0.0.0"/>
                     </el-form-item>
+
+                    <el-form-item label="密码有效时间（分钟）" prop="passwordIntervalMinutes">
+                        <el-input v-model="currentService.passwordIntervalMinutes" placeholder="默认 30 分钟"/>
+                    </el-form-item>
+
                     <el-form-item>
                         <el-button type="primary" @click="submitServiceForm">
                             保存配置
@@ -262,11 +280,12 @@ onMounted(() => {
 
 .settings-form {
     max-width: 520px;
+    user-select: none
 }
 
-.form-tip {
-    margin: 8px 0 0;
-    color: #909399;
-    font-size: 12px;
+.form-label-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 </style>
