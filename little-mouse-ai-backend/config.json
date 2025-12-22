@@ -1,6 +1,7 @@
 {
-  "password": "123456",
   "port": 3000,
   "allowIp": "0.0.0.0",
-  "passwordIntervalMinutes": 30
+  "password": "123456",
+  "passwordIntervalMinutes": 30,
+  "lastVerifiedAt": "2025-12-22T09:39:01.045Z"
 }

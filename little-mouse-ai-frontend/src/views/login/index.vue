@@ -1,7 +1,7 @@
 <script setup>
 import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
-import {ElMessage} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {Lock} from '@element-plus/icons-vue'
 import {verifyLoginPassword} from "@/api/loginApi.js";
 
@@ -22,16 +22,14 @@ const rules = {
     ],
 }
 
-const rememberPassword = ref(true)
-
 onMounted(() => {
     const savedPassword = localStorage.getItem(PASSWORD_STORAGE_KEY)
 
     if (savedPassword) {
         loginForm.value.password = savedPassword
-        rememberPassword.value = true
+        remember.value = true
     } else {
-        rememberPassword.value = false
+        remember.value = false
     }
 })
 
@@ -45,7 +43,7 @@ const handleSubmit = (formRef) => {
             const res = await verifyLoginPassword(loginForm.value.password)
 
             if (res.success) {
-                if (rememberPassword.value) {
+                if (remember.value) {
                     localStorage.setItem(PASSWORD_STORAGE_KEY, loginForm.value.password)
                 } else {
                     localStorage.removeItem(PASSWORD_STORAGE_KEY)
@@ -63,7 +61,12 @@ const handleSubmit = (formRef) => {
 }
 
 const handleForgotPassword = () => {
-    remember.value = true
+    ElMessageBox.alert(
+        '默认密码：123456<br>密码储存在 little-mouse-ai-backend/config.json',
+        {
+            dangerouslyUseHTMLString: true
+        }
+    )
 }
 
 
@@ -105,7 +108,7 @@ const handleForgotPassword = () => {
             </el-form>
 
             <div class="form-options">
-                <el-checkbox v-model="rememberPassword">记住我</el-checkbox>
+                <el-checkbox v-model="remember">记住我</el-checkbox>
                 <el-link :underline="false" type="primary" @click="handleForgotPassword">忘记密码？</el-link>
             </div>
 
@@ -118,19 +121,6 @@ const handleForgotPassword = () => {
             >
                 登录
             </el-button>
-
-            <el-dialog
-                v-model="remember"
-                align-center
-                class="forgot-dialog"
-                width="420px"
-            >
-                <p>默认密码：123456</p>
-                <p>忘记密码可在 little-mouse-ai-backend/config.json 的 password 字段查看</p>
-                <template #footer>
-                    <el-button type="primary" @click="remember = false">知道了</el-button>
-                </template>
-            </el-dialog>
 
         </el-card>
     </div>
