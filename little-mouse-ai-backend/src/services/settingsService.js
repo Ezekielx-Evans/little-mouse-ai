@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS = {
     passwordIntervalMinutes: 30
 }
 
-const readConfig = async () => {
+async function readConfig() {
     try {
         const content = await fs.readFile(CONFIG_PATH, 'utf-8')
         const savedConfig = JSON.parse(content)
@@ -26,53 +26,50 @@ const readConfig = async () => {
     }
 }
 
-const writeConfig = async (config) => {
+async function writeConfig(config) {
     await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8')
 }
 
 /**
  * 获取当前设置（服务配置与密码配置）。
  */
-export const getSettings = async () => {
+export async function getSettingConfig() {
     const config = await readConfig()
+
+    return {
+        port: config.port,
+        allowIp: config.allowIp,
+        passwordIntervalMinutes: config.passwordIntervalMinutes
+    }
 }
 
 /**
  * 更新服务配置（端口与允许访问的 IP）。
- *
- * @param {Object} data
- * @param {number} data.port 运行端口
- * @param {string} data.allowIp 允许访问的 IP
  */
-export const updateServiceConfig = async ({port, allowIp}) => {
+export async function saveSettingConfig({port, allowIp, passwordIntervalMinutes}) {
     const config = await readConfig()
 
     const nextConfig = {
         ...config,
         port,
-        allowIp
+        allowIp,
+        passwordIntervalMinutes
     }
 
     await writeConfig(nextConfig)
 
     return {
         port: nextConfig.port,
-        allowIp: nextConfig.allowIp
+        allowIp: nextConfig.allowIp,
+        passwordIntervalMinutes: nextConfig.passwordIntervalMinutes
     }
 }
 
 /**
  * 修改密码。
- *
- * @param {Object} data
- * @param {string} data.password 新密码
  */
-export const updatePassword = async ({password}) => {
+export async function updateSettingData({password}) {
     const config = await readConfig()
-
-    if (!password) {
-        throw new Error('新密码不能为空')
-    }
 
     const nextConfig = {
         ...config,

@@ -3,6 +3,7 @@
 import {ElMessage} from 'element-plus'
 import {onMounted, ref} from 'vue'
 import {Warning} from "@element-plus/icons-vue";
+import {getSettingConfig, saveSettingConfig, updateSettingData} from "@/api/settingsApi.js";
 
 // 服务配置和密码管理的表单实例
 const serviceForm = ref()
@@ -15,26 +16,53 @@ const currentService = ref({
     passwordIntervalMinutes: ''
 })
 const currentPassword = ref({
-    oldPassword: '',
-    newPassword: '',
+    password: '',
     confirmPassword: '',
 })
 
 // 获取服务配置和密码
-const getCurrentService = () => {
-    currentService.value.port = '28036'
-    currentService.value.allowIp = '0.0.0.0'
-    currentService.value.passwordIntervalMinutes = '30'
+const getCurrentService = async () => {
+    try {
+        const res = await getSettingConfig()
+
+        if (!res.success) {
+            return ElMessage.error(res.message || '获取服务配置失败')
+        }
+
+        const data = res.data || {}
+        currentService.value.port = data.port ?? ''
+        currentService.value.allowIp = data.allowIp ?? ''
+        currentService.value.passwordIntervalMinutes = data.passwordIntervalMinutes ?? ''
+    } catch (err) {
+        console.error(err)
+        ElMessage.error(`系统错误：${err.message || '获取配置失败'}`)
+    }
 }
 
 // 保存表单与重置表单
 const submitServiceForm = (formRef) => {
     if (!formRef) return
-    formRef.validate((valid) => {
-        if (valid) {
-            ElMessage.success('保存成功')
-        } else {
+
+    formRef.validate(async (valid) => {
+        if (!valid) {
             ElMessage.error('请检查表单输入是否正确！')
+            return
+        }
+
+        try {
+            const res = await saveSettingConfig({...currentService.value})
+
+            if (res.success) {
+                currentService.value.port = res.data?.port ?? currentService.value.port
+                currentService.value.allowIp = res.data?.allowIp ?? currentService.value.allowIp
+                currentService.value.passwordIntervalMinutes = res.data?.passwordIntervalMinutes ?? currentService.value.passwordIntervalMinutes
+                ElMessage.success('保存成功')
+            } else {
+                ElMessage.error(res.message || '保存失败')
+            }
+        } catch (err) {
+            console.error(err)
+            ElMessage.error(`保存失败：${err.message || '系统错误'}`)
         }
     })
 }
@@ -46,11 +74,27 @@ const resetServiceForm = (formRef) => {
 
 const submitPasswordForm = (formRef) => {
     if (!formRef) return
-    formRef.validate((valid) => {
-        if (valid) {
-            ElMessage.success('保存成功')
-        } else {
+
+    formRef.validate(async (valid) => {
+        if (!valid) {
             ElMessage.error('请检查表单输入是否正确！')
+            return
+        }
+
+        try {
+            const res = await updateSettingData({
+                password: currentPassword.value.password,
+            })
+
+            if (res.success) {
+                ElMessage.success('修改成功')
+                resetPasswordForm(formRef)
+            } else {
+                ElMessage.error(res.message || '修改失败')
+            }
+        } catch (err) {
+            console.error(err)
+            ElMessage.error(`修改失败：${err.message || '系统错误'}`)
         }
     })
 }
@@ -94,13 +138,23 @@ const serviceRules = {
             trigger: 'blur',
         },
     ],
+    passwordIntervalMinutes: [
+        {required: true, message: '请输入密码有效时间', trigger: 'blur'},
+        {
+            validator: (rule, value, callback) => {
+                const minutes = Number(value)
+                if (!Number.isInteger(minutes) || minutes <= 0) {
+                    callback(new Error('有效时间必须为正整数'))
+                } else {
+                    callback()
+                }
+            },
+            trigger: 'blur',
+        }
+    ]
 }
 const passwordRules = {
-    oldPassword: [
-        {required: true, message: '请输入当前密码', trigger: 'blur'},
-        {min: 6, message: '密码长度至少 6 位', trigger: 'blur'},
-    ],
-    newPassword: [
+    password: [
         {required: true, message: '请输入新密码', trigger: 'blur'},
         {min: 6, message: '密码长度至少 6 位', trigger: 'blur'},
         {
@@ -123,7 +177,7 @@ const passwordRules = {
             validator: (rule, value, callback) => {
                 if (!value) {
                     callback(new Error('请再次输入新密码'))
-                } else if (value !== currentPassword.value.newPassword) {
+                } else if (value !== currentPassword.value.password) {
                     callback(new Error('两次输入的密码不一致'))
                 } else {
                     callback()
@@ -190,10 +244,10 @@ onMounted(() => {
                     </el-form-item>
 
                     <el-form-item>
-                        <el-button type="primary" @click="submitServiceForm">
+                        <el-button type="primary" @click="submitServiceForm(serviceForm)">
                             保存配置
                         </el-button>
-                        <el-button @click="resetServiceForm">
+                        <el-button @click="resetServiceForm(serviceForm)">
                             重置
                         </el-button>
                     </el-form-item>
@@ -214,12 +268,8 @@ onMounted(() => {
                     class="settings-form"
                     label-position="top"
                 >
-                    <el-form-item label="当前密码" prop="oldPassword">
-                        <el-input v-model="currentPassword.oldPassword" placeholder="请输入当前密码"
-                                  show-password/>
-                    </el-form-item>
-                    <el-form-item label="新密码" prop="newPassword">
-                        <el-input v-model="currentPassword.newPassword" placeholder="请输入新密码"
+                    <el-form-item label="新密码" prop="password">
+                        <el-input v-model="currentPassword.password" placeholder="请输入新密码"
                                   show-password/>
                     </el-form-item>
                     <el-form-item label="确认新密码" prop="confirmPassword">
@@ -227,10 +277,10 @@ onMounted(() => {
                                   show-password/>
                     </el-form-item>
                     <el-form-item>
-                        <el-button type="primary" @click="submitPasswordForm">
+                        <el-button type="primary" @click="submitPasswordForm(passwordForm)">
                             确认修改
                         </el-button>
-                        <el-button @click="resetPasswordForm">
+                        <el-button @click="resetPasswordForm(passwordForm)">
                             清空
                         </el-button>
                     </el-form-item>
