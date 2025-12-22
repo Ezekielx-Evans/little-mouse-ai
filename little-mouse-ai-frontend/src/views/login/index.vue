@@ -1,5 +1,5 @@
 <script setup>
-import {ref} from 'vue'
+import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {ElMessage} from 'element-plus'
 import {Lock} from '@element-plus/icons-vue'
@@ -7,6 +7,9 @@ import {verifyLoginPassword} from "@/api/loginApi.js";
 
 const router = useRouter()
 const loginFormRef = ref()
+const remember = ref(false)
+
+const PASSWORD_STORAGE_KEY = 'password'
 
 const loginForm = ref({
     password: '',
@@ -19,7 +22,18 @@ const rules = {
     ],
 }
 
-const remember = ref(true)
+const rememberPassword = ref(true)
+
+onMounted(() => {
+    const savedPassword = localStorage.getItem(PASSWORD_STORAGE_KEY)
+
+    if (savedPassword) {
+        loginForm.value.password = savedPassword
+        rememberPassword.value = true
+    } else {
+        rememberPassword.value = false
+    }
+})
 
 const handleSubmit = (formRef) => {
     if (!formRef) return
@@ -31,6 +45,12 @@ const handleSubmit = (formRef) => {
             const res = await verifyLoginPassword(loginForm.value.password)
 
             if (res.success) {
+                if (rememberPassword.value) {
+                    localStorage.setItem(PASSWORD_STORAGE_KEY, loginForm.value.password)
+                } else {
+                    localStorage.removeItem(PASSWORD_STORAGE_KEY)
+                }
+
                 ElMessage.success('登录成功')
                 await router.push('/')
             } else {
@@ -40,6 +60,10 @@ const handleSubmit = (formRef) => {
             ElMessage.error('密码错误！')
         }
     })
+}
+
+const handleForgotPassword = () => {
+    remember.value = true
 }
 
 
@@ -70,7 +94,6 @@ const handleSubmit = (formRef) => {
                         show-password
                         size="large"
                         type="password"
-                        @keyup.enter="handleSubmit"
                     >
                         <template #prefix>
                             <el-icon>
@@ -82,8 +105,8 @@ const handleSubmit = (formRef) => {
             </el-form>
 
             <div class="form-options">
-                <el-checkbox v-model="remember">记住我</el-checkbox>
-                <el-link :underline="false" type="primary">忘记密码？</el-link>
+                <el-checkbox v-model="rememberPassword">记住我</el-checkbox>
+                <el-link :underline="false" type="primary" @click="handleForgotPassword">忘记密码？</el-link>
             </div>
 
             <el-button
@@ -95,6 +118,20 @@ const handleSubmit = (formRef) => {
             >
                 登录
             </el-button>
+
+            <el-dialog
+                v-model="remember"
+                align-center
+                class="forgot-dialog"
+                title="忘记密码"
+                width="420px"
+            >
+                <p class="forgot-dialog__text">默认密码：123456</p>
+                <p class="forgot-dialog__text">忘记密码可在 little-mouse-ai-backend/config.json 的 password 字段查看</p>
+                <template #footer>
+                    <el-button type="primary" @click="remember = false">知道了</el-button>
+                </template>
+            </el-dialog>
 
         </el-card>
     </div>
@@ -177,6 +214,12 @@ const handleSubmit = (formRef) => {
     height: 48px;
     font-size: 16px;
     letter-spacing: 0.1em;
+}
+
+.forgot-dialog__text {
+    margin: 6px 0;
+    color: #606266;
+    line-height: 1.6;
 }
 
 </style>
