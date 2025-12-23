@@ -3,7 +3,7 @@
 import {ElMessage} from 'element-plus'
 import {onMounted, ref} from 'vue'
 import {Warning} from "@element-plus/icons-vue";
-import {getSettingConfig, saveSettingConfig, updateSettingData} from "@/api/settingsApi.js";
+import {getSettingConfig, saveSettingConfig, updateLoginPassword} from "@/api/settingsApi.js";
 
 // 服务配置和密码管理的表单实例
 const serviceForm = ref()
@@ -82,11 +82,9 @@ const submitPasswordForm = (formRef) => {
             ElMessage.error('请检查表单输入是否正确！')
             return
         }
-
         try {
-            const res = await updateSettingData({
-                password: currentPassword.value.password,
-            })
+            const res = await updateLoginPassword(currentPassword.value.password)
+            console.log('updateLoginPassword res:', res)
 
             if (res.success) {
                 ElMessage.success('修改成功')
@@ -161,13 +159,10 @@ const passwordRules = {
         {min: 6, message: '密码长度至少 6 位', trigger: 'blur'},
         {
             validator: (rule, value, callback) => {
-                if (!value) {
-                    callback(new Error('请再次输入新密码'))
-                } else if (currentPassword.value.confirmPassword !== '') {
+                if (currentPassword.value.confirmPassword !== '') {
                     passwordForm.value.validateField('confirmPassword')
-                } else {
-                    callback()
                 }
+                callback()
             },
             trigger: 'blur',
         }
@@ -177,9 +172,7 @@ const passwordRules = {
         {min: 6, message: '密码长度至少 6 位', trigger: 'blur'},
         {
             validator: (rule, value, callback) => {
-                if (!value) {
-                    callback(new Error('请再次输入新密码'))
-                } else if (value !== currentPassword.value.password) {
+                if (value !== currentPassword.value.password) {
                     callback(new Error('两次输入的密码不一致'))
                 } else {
                     callback()

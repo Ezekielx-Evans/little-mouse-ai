@@ -1,16 +1,12 @@
 <script setup>
-import {onMounted, ref} from 'vue'
-import {useRouter} from 'vue-router'
-import {ElMessage, ElMessageBox} from 'element-plus'
-import {Lock} from '@element-plus/icons-vue'
-import {verifyLoginPassword, verifyLoginSession} from "@/api/loginApi.js";
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Lock } from '@element-plus/icons-vue'
+import { verifyLoginPassword } from '@/api/loginApi.js'
 
 const router = useRouter()
 const loginFormRef = ref()
-const remember = ref(false)
-
-// 是否登录过
-const LOGIN_FLAG_KEY = 'has_logged_in'
 
 const loginForm = ref({
     password: '',
@@ -18,29 +14,10 @@ const loginForm = ref({
 
 const rules = {
     password: [
-        {required: true, message: '密码不能为空！', trigger: 'blur'},
-        {min: 6, message: '密码长度至少 6 位', trigger: 'blur'},
+        { required: true, message: '密码不能为空！', trigger: 'blur' },
+        { min: 6, message: '密码长度至少 6 位', trigger: 'blur' },
     ],
 }
-
-onMounted(async () => {
-
-    // 先验证是否登录过
-    const hasLogin = localStorage.getItem(LOGIN_FLAG_KEY) || sessionStorage.getItem(LOGIN_FLAG_KEY)
-
-    // 如果没有登录需要输入密码
-    if (!hasLogin) return
-
-    // 查看登录状态是否过期
-    const ok = await verifyLoginSession()
-
-    if (ok) {
-        await router.push('/')
-    } else {
-        localStorage.removeItem(LOGIN_FLAG_KEY)
-        sessionStorage.removeItem(LOGIN_FLAG_KEY)
-    }
-})
 
 const handleSubmit = (formRef) => {
     if (!formRef) return
@@ -52,14 +29,6 @@ const handleSubmit = (formRef) => {
             const res = await verifyLoginPassword(loginForm.value.password)
 
             if (res.success) {
-                if (remember.value) {
-                    // 如果登录成功且勾选了记住我，将登录状态存储在本地（关闭浏览器已经有效）
-                    localStorage.setItem(LOGIN_FLAG_KEY, '1')
-                } else {
-                    // 如果登录成功但没有勾选记住我，将登录状态存储在会话（关闭浏览器失效）
-                    sessionStorage.setItem(LOGIN_FLAG_KEY, '1')
-                }
-
                 ElMessage.success('登录成功')
                 await router.push('/')
             } else {
@@ -71,17 +40,14 @@ const handleSubmit = (formRef) => {
     })
 }
 
-
 const handleForgotPassword = () => {
     ElMessageBox.alert(
-        '默认密码：123456<br>密码储存在 little-mouse-ai-backend/config.json',
+        '默认密码：123456<br>密码储存在 little-mouse-ai-backend/config.json<br>重置密码可将配置文件中 password 字段删除',
         {
-            dangerouslyUseHTMLString: true
+            dangerouslyUseHTMLString: true,
         }
     )
 }
-
-
 </script>
 
 <template>
@@ -101,6 +67,7 @@ const handleForgotPassword = () => {
                 :rules="rules"
                 class="login-form"
                 label-position="top"
+                @submit.prevent="handleSubmit(loginFormRef)"
             >
                 <el-form-item prop="password">
                     <el-input
@@ -112,7 +79,7 @@ const handleForgotPassword = () => {
                     >
                         <template #prefix>
                             <el-icon>
-                                <Lock/>
+                                <Lock />
                             </el-icon>
                         </template>
                     </el-input>
@@ -120,8 +87,13 @@ const handleForgotPassword = () => {
             </el-form>
 
             <div class="form-options">
-                <el-checkbox v-model="remember">记住我</el-checkbox>
-                <el-link :underline="false" type="primary" @click="handleForgotPassword">忘记密码？</el-link>
+                <el-link
+                    :underline="false"
+                    type="primary"
+                    @click="handleForgotPassword"
+                >
+                    忘记密码？
+                </el-link>
             </div>
 
             <el-button
@@ -133,7 +105,6 @@ const handleForgotPassword = () => {
             >
                 登录
             </el-button>
-
         </el-card>
     </div>
 </template>
@@ -152,10 +123,10 @@ const handleForgotPassword = () => {
 .background-gradient {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 20% 20%, rgba(58, 122, 254, 0.2), transparent 55%),
-    radial-gradient(circle at 80% 0%, rgba(144, 202, 249, 0.25), transparent 50%),
-    radial-gradient(circle at 50% 80%, rgba(105, 117, 255, 0.2), transparent 55%);
-    filter: blur(0px);
+    background:
+        radial-gradient(circle at 20% 20%, rgba(58, 122, 254, 0.2), transparent 55%),
+        radial-gradient(circle at 80% 0%, rgba(144, 202, 249, 0.25), transparent 50%),
+        radial-gradient(circle at 50% 80%, rgba(105, 117, 255, 0.2), transparent 55%);
     z-index: 1;
 }
 
@@ -204,9 +175,8 @@ const handleForgotPassword = () => {
 
 .form-options {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 18px 0 18px;
+    justify-content: flex-end;
+    margin: 18px 0;
     color: #909399;
 }
 
@@ -216,5 +186,4 @@ const handleForgotPassword = () => {
     font-size: 16px;
     letter-spacing: 0.1em;
 }
-
 </style>

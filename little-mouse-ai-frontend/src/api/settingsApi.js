@@ -13,7 +13,7 @@ export const saveSettingConfig = async (data) => {
 }
 
 // 修改密码
-export const updateSettingData = async (data) => {
+export const updateLoginPassword = async (data) => {
     const res = await instance.post('/setting/password', data)
     return res.data
 }

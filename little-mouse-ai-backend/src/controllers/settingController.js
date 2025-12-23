@@ -1,8 +1,4 @@
-import {
-    getSettingConfig,
-    saveSettingConfig,
-    updateSettingData,
-} from '../services/settingService.js'
+import {getSettingConfig, saveSettingConfig, updateLoginPassword,} from '../services/settingService.js'
 
 export const getConfig = async (req, res) => {
     try {
@@ -24,9 +20,10 @@ export const saveConfig = async (req, res) => {
 
 export const updatePassword = async (req, res) => {
     try {
-        const {password} = req.body || {}
+        const {password} = req.body
 
-        await updateSettingData({password})
+        await updateLoginPassword(password)
+
         res.json({success: true})
     } catch (error) {
         res.status(400).json({success: false, message: error.message})

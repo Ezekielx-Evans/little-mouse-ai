@@ -39,14 +39,11 @@ export async function saveSettingConfig({ port, allowIp, passwordIntervalMinutes
  * 修改密码。
  * 修改密码后强制让登录会话失效
  */
-export async function updateSettingData({ password }) {
+export async function updateLoginPassword(password) {
     const config = await readConfig()
 
-    const nextConfig = {
-        ...config,
-        password,
-        lastVerifiedAt: undefined // 强制重新登录
-    }
+    delete config.lastVerifiedAt
+    config.password = password
 
-    await writeConfig(nextConfig)
+    await writeConfig(config)
 }
