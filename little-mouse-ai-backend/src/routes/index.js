@@ -6,6 +6,7 @@ import webhookRoutes from "./webhookRoutes.js";
 import processRoutes from "./processRoutes.js";
 import settingRoutes from './settingRoutes.js'
 import loginRouter from "./loginRouter.js";
+import requestRoutes from "./requestRoutes.js";
 
 const router = express.Router()
 
@@ -16,5 +17,6 @@ router.use('/webhook', webhookRoutes)
 router.use('/process', processRoutes)
 router.use('/setting', settingRoutes)
 router.use('/login', loginRouter)
+router.use('/request', requestRoutes)
 
 export default router
