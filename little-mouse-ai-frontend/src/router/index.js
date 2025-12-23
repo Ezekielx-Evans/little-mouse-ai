@@ -35,7 +35,7 @@ router.beforeEach(async (to, from) => {
     try {
         const res = await verifyLoginSession()
 
-        if (!res?.success) {
+        if (!res?.data?.authenticated) {
             return '/login'
         }
     } catch (err) {

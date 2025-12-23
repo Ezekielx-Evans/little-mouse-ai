@@ -3,13 +3,14 @@ import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Lock} from '@element-plus/icons-vue'
-import {verifyLoginPassword} from "@/api/loginApi.js";
+import {verifyLoginPassword, verifyLoginSession} from "@/api/loginApi.js";
 
 const router = useRouter()
 const loginFormRef = ref()
 const remember = ref(false)
 
-const PASSWORD_STORAGE_KEY = 'password'
+// 是否登录过
+const LOGIN_FLAG_KEY = 'has_logged_in'
 
 const loginForm = ref({
     password: '',
@@ -22,14 +23,22 @@ const rules = {
     ],
 }
 
-onMounted(() => {
-    const savedPassword = localStorage.getItem(PASSWORD_STORAGE_KEY)
+onMounted(async () => {
 
-    if (savedPassword) {
-        loginForm.value.password = savedPassword
-        remember.value = true
+    // 先验证是否登录过
+    const hasLogin = localStorage.getItem(LOGIN_FLAG_KEY) || sessionStorage.getItem(LOGIN_FLAG_KEY)
+
+    // 如果没有登录需要输入密码
+    if (!hasLogin) return
+
+    // 查看登录状态是否过期
+    const ok = await verifyLoginSession()
+
+    if (ok) {
+        await router.push('/')
     } else {
-        remember.value = false
+        localStorage.removeItem(LOGIN_FLAG_KEY)
+        sessionStorage.removeItem(LOGIN_FLAG_KEY)
     }
 })
 
@@ -44,9 +53,11 @@ const handleSubmit = (formRef) => {
 
             if (res.success) {
                 if (remember.value) {
-                    localStorage.setItem(PASSWORD_STORAGE_KEY, loginForm.value.password)
+                    // 如果登录成功且勾选了记住我，将登录状态存储在本地（关闭浏览器已经有效）
+                    localStorage.setItem(LOGIN_FLAG_KEY, '1')
                 } else {
-                    localStorage.removeItem(PASSWORD_STORAGE_KEY)
+                    // 如果登录成功但没有勾选记住我，将登录状态存储在会话（关闭浏览器失效）
+                    sessionStorage.setItem(LOGIN_FLAG_KEY, '1')
                 }
 
                 ElMessage.success('登录成功')
@@ -59,6 +70,7 @@ const handleSubmit = (formRef) => {
         }
     })
 }
+
 
 const handleForgotPassword = () => {
     ElMessageBox.alert(
