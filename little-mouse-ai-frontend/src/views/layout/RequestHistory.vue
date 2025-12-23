@@ -1,6 +1,6 @@
 <script setup>
 import {onMounted, ref} from 'vue'
-import {getRequestLogs} from '@/api/requestLogApi.js'
+import {getRequestHistory} from '@/api/requestHistoryApi.js'
 
 const requestInfo = ref([
     {label: '总请求', value: 0, color: '#409EFF'},
@@ -71,7 +71,7 @@ const handleCurrentChange = (val) => {
 const fetchData = async () => {
     loading.value = true
     try {
-        const res = await getRequestLogs({page: currentPage.value, size: pageSize.value})
+        const res = await getRequestHistory({page: currentPage.value, size: pageSize.value})
 
         if (res.success) {
             const {list = [], total: totalCount = 0, summary = {}} = res.data || {}
