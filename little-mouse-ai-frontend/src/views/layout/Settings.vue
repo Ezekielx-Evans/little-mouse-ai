@@ -3,7 +3,7 @@
 import {ElMessage} from 'element-plus'
 import {onMounted, ref} from 'vue'
 import {Warning} from "@element-plus/icons-vue";
-import {getSettingConfig, saveSettingConfig, updateLoginPassword} from "@/api/settingsApi.js";
+import {getSettingConfig, saveSettingConfig, updateLoginPassword} from "@/api/settingApi.js";
 
 // 服务配置和密码管理的表单实例
 const serviceForm = ref()
@@ -83,8 +83,7 @@ const submitPasswordForm = (formRef) => {
             return
         }
         try {
-            const res = await updateLoginPassword(currentPassword.value.password)
-            console.log('updateLoginPassword res:', res)
+            const res = await updateLoginPassword({password: currentPassword.value.password})
 
             if (res.success) {
                 ElMessage.success('修改成功')
