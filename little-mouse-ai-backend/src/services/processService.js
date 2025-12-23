@@ -4,7 +4,7 @@ import path from "path"
 import OpenAI from "openai"
 import ModelConfig from "../models/modelConfigModel.js"
 import ProcessConfig from "../models/processConfigModel.js"
-import RequestLog from "../models/requestLogModel.js"
+import RequestHistory from "../models/requestHistoryModel.js"
 import RoleConversationHistory from "../models/roleConversationHistoryModel.js"
 
 
@@ -518,7 +518,7 @@ async function playRole(processConfig, userMessage) {
 
     try {
         // 请求前：创建请求记录（status: "pending"）
-        requestLog = await RequestLog.create({
+        requestLog = await RequestHistory.create({
             modelId: processConfig.modelId, processId: processConfig.id, botId: processConfig.botId,
 
             status: "pending",
@@ -543,7 +543,7 @@ async function playRole(processConfig, userMessage) {
         ])
 
         // 更新请求成功记录
-        await RequestLog.updateOne({_id: requestLog._id}, {
+        await RequestHistory.updateOne({_id: requestLog._id}, {
             status: "success", response: res, tokens: res.usage?.total_tokens ?? 0, responseAt: new Date()
         })
 
@@ -553,7 +553,7 @@ async function playRole(processConfig, userMessage) {
 
         // 更新请求失败记录
         if (requestLog) {
-            await RequestLog.updateOne({_id: requestLog._id}, {
+            await RequestHistory.updateOne({_id: requestLog._id}, {
                 status: "error", response: {
                     message: err.message
                 }, responseAt: new Date()

@@ -1,6 +1,6 @@
 import mongoose from "mongoose"
 
-const requestLogSchema = new mongoose.Schema({
+const requestHistorySchema = new mongoose.Schema({
     request: mongoose.Schema.Types.Mixed,
     response: mongoose.Schema.Types.Mixed,
     modelId: String,
@@ -13,4 +13,4 @@ const requestLogSchema = new mongoose.Schema({
     tokens: Number
 })
 
-export default mongoose.model("RequestLog", requestLogSchema)
+export default mongoose.model("RequestLog", requestHistorySchema)
