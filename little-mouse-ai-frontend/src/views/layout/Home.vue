@@ -1,14 +1,15 @@
 <script setup>
 import {onBeforeUnmount, onMounted, ref} from 'vue'
 import {getSystemInfo} from '@/api/systemApi.js'
+import {getRequestHistoryList} from '@/api/requestApi.js'
 
 // 定义展示数据
 const systemInfo = ref([])
 const systemLoad = ref([])
 const llmStats = ref([
-    {label: '请求总数', value: '12,843'},
-    {label: '成功率', value: '98.4%'},
-    {label: 'Token 消耗', value: '1.2M'},
+    {label: '请求总数', value: '0'},
+    {label: '成功率', value: '0%'},
+    {label: 'Token 消耗', value: '0'},
 ])
 
 // 定义第一次获取数据时的加载状态
@@ -30,38 +31,55 @@ onBeforeUnmount(() => {
 })
 
 async function loadData() {
-    const data = await getSystemInfo()
+    const [systemRes, historyRes] = await Promise.all([
+        getSystemInfo(),
+        getRequestHistoryList({page: 1, size: 1}),
+    ])
 
     systemInfo.value = [
-        {label: '版本', value: data.version},
-        {label: '操作系统', value: data.platform},
-        {label: 'Node.js 版本', value: data.nodeVersion},
-        {label: 'CPU 型号', value: data.cpuName},
+        {label: '版本', value: systemRes.version},
+        {label: '操作系统', value: systemRes.platform},
+        {label: 'Node.js 版本', value: systemRes.nodeVersion},
+        {label: 'CPU 型号', value: systemRes.cpuName},
     ]
 
     systemLoad.value = [
         {
             label: 'CPU',
-            value: getUsedCpuCores(data.cpuUsagePerCore),
-            total: data.cpuUsagePerCore.length,
+            value: getUsedCpuCores(systemRes.cpuUsagePerCore),
+            total: systemRes.cpuUsagePerCore.length,
             unit: '核',
-            percent: getCpuAverage(data.cpuUsagePerCore),
+            percent: getCpuAverage(systemRes.cpuUsagePerCore),
         },
         {
             label: '内存',
-            value: (data.memory.totalGB - data.memory.freeGB).toFixed(2),
-            total: data.memory.totalGB,
+            value: (systemRes.memory.totalGB - systemRes.memory.freeGB).toFixed(2),
+            total: systemRes.memory.totalGB,
             unit: 'GB',
-            percent: getMemoryUsage(data.memory),
+            percent: getMemoryUsage(systemRes.memory),
         },
         {
             label: '存储',
-            value: data.storage.usedGB.toFixed(2),
-            total: data.storage.totalGB,
+            value: systemRes.storage.usedGB.toFixed(2),
+            total: systemRes.storage.totalGB,
             unit: 'GB',
-            percent: Number(data.storage.capacity.replace('%', '')),
+            percent: Number(systemRes.storage.capacity.replace('%', '')),
         },
     ]
+
+    if (historyRes?.success) {
+        const stats = historyRes.data?.stats || {}
+        const total = Number(historyRes.data?.total ?? 0)
+        const success = Number(stats.success ?? 0)
+        const tokens = Number(stats.tokens ?? 0)
+        const successRate = total ? `${((success / total) * 100).toFixed(1)}%` : '0%'
+
+        llmStats.value = [
+            {label: '请求总数', value: formatNumber(total)},
+            {label: '成功率', value: successRate},
+            {label: 'Token 消耗', value: formatToken(tokens)},
+        ]
+    }
 
     // 第一次加载完成后关闭 loading
     if (loading.value) loading.value = false
@@ -87,6 +105,21 @@ function getCpuAverage(cpuList) {
 function getMemoryUsage(memory) {
     const used = memory.totalGB - memory.freeGB
     return Number(((used / memory.totalGB) * 100).toFixed(0))
+}
+
+function formatNumber(value) {
+    return Number(value).toLocaleString('en-US')
+}
+
+function formatToken(value) {
+    const numberValue = Number(value)
+    if (numberValue >= 1_000_000) {
+        return `${(numberValue / 1_000_000).toFixed(1)}M`
+    }
+    if (numberValue >= 1_000) {
+        return `${(numberValue / 1_000).toFixed(1)}K`
+    }
+    return formatNumber(numberValue)
 }
 </script>
 
