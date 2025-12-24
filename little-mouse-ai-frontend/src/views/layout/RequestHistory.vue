@@ -1,6 +1,7 @@
 <script setup>
-import {computed, onMounted, ref} from 'vue'
+import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {getRequestHistoryList} from '@/api/requestApi.js'
+import {getBotConfigList} from '@/api/botApi.js'
 
 const requestInfo = ref([
     {label: '总请求', value: '0', color: '#409EFF'},
@@ -22,6 +23,20 @@ const pageSize = ref(10)
 const total = ref(0)
 const detailVisible = ref(false)
 const activeHistory = ref(null)
+const botOptions = ref([])
+const refreshTimer = ref(null)
+
+const statusTypeMap = {
+    pending: 'warning',
+    success: 'success',
+    error: 'danger'
+}
+
+const statusLabelMap = {
+    pending: '请求中',
+    success: '成功',
+    error: '失败'
+}
 
 // 分页方法（调用后端接口）
 // page-size 改变时触发
@@ -37,17 +52,27 @@ const handleCurrentChange = (val) => {
 
 // 请求后端数据
 const fetchData = async () => {
-    const res = await getRequestHistoryList({
-        page: currentPage.value,
-        size: pageSize.value
-    })
+    const [historyRes, botRes] = await Promise.all([
+        getRequestHistoryList({
+            page: currentPage.value,
+            size: pageSize.value
+        }),
+        getBotConfigList()
+    ])
 
-    if (!res?.success) return
+    if (botRes?.success) {
+        botOptions.value = botRes.data.map(item => ({
+            label: item.name,
+            value: item.id
+        }))
+    }
 
-    requestData.value = res.data.records || []
-    total.value = res.data.total || 0
+    if (!historyRes?.success) return
 
-    const stats = res.data.stats || {}
+    requestData.value = historyRes.data.records || []
+    total.value = historyRes.data.total || 0
+
+    const stats = historyRes.data.stats || {}
     requestInfo.value = [
         {label: '总请求', value: String(stats.total ?? 0), color: '#409EFF'},
         {label: '请求中', value: String(stats.pending ?? 0), color: '#E6A23C'},
@@ -72,8 +97,21 @@ const formattedResponse = computed(() => {
     return JSON.stringify(activeHistory.value.response, null, 2)
 })
 
+const resolveBotName = (botId) => botOptions.value.find(item => item.value === botId)?.label || '未知机器人'
+
+const resolveStatusType = (status) => statusTypeMap[status] ?? 'info'
+const resolveStatusLabel = (status) => statusLabelMap[status] ?? (status || '未知状态')
+
 onMounted(() => {
     fetchData()
+    refreshTimer.value = setInterval(fetchData, 10000)
+})
+
+onBeforeUnmount(() => {
+    if (refreshTimer.value) {
+        clearInterval(refreshTimer.value)
+        refreshTimer.value = null
+    }
 })
 </script>
 
@@ -124,10 +162,25 @@ onMounted(() => {
                 <!-- 记录表格 -->
                 <el-table :data="requestData" border style="width: 100%">
                     <el-table-column label="模型" prop="model"/>
-                    <el-table-column label="机器人" prop="bot"/>
+                    <el-table-column label="机器人" prop="bot">
+                        <template #default="{ row }">
+                            <div class="option-row">
+                                <span>{{ resolveBotName(row.bot) }}</span>
+                                <el-tag size="small">
+                                    {{ row.bot }}
+                                </el-tag>
+                            </div>
+                        </template>
+                    </el-table-column>
                     <el-table-column label="请求时间" prop="requestTime"/>
                     <el-table-column label="响应时间" prop="responseTime"/>
-                    <el-table-column label="状态" prop="status"/>
+                    <el-table-column label="状态" prop="status">
+                        <template #default="{ row }">
+                            <el-tag :type="resolveStatusType(row.status)" size="small">
+                                {{ resolveStatusLabel(row.status) }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
                     <el-table-column label="Token" prop="token"/>
                     <el-table-column label="请求/响应" width="120">
                         <template #default="{ row }">
@@ -270,6 +323,13 @@ onMounted(() => {
     word-break: break-word;
     font-size: 13px;
     color: #606266;
+}
+
+.option-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 
