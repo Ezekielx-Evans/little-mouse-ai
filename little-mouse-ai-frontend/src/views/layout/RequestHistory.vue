@@ -11,7 +11,7 @@ const requestInfo = ref([
     {label: 'Token', value: '0', color: '#909399'},
 ])
 
-// 表格数据（后端接口获取）
+// 表格数据
 const requestData = ref([])
 
 // 分页变量
@@ -21,10 +21,11 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 // 记录总数
 const total = ref(0)
+
 const detailVisible = ref(false)
 const activeHistory = ref(null)
 const botOptions = ref([])
-const refreshTimer = ref(null)
+const timer = ref(null)
 
 const statusTypeMap = {
     pending: 'warning',
@@ -44,6 +45,7 @@ const handleSizeChange = (val) => {
     pageSize.value = val
     fetchData()
 }
+
 // current-page 改变时触发
 const handleCurrentChange = (val) => {
     currentPage.value = val
@@ -97,22 +99,48 @@ const formattedResponse = computed(() => {
     return JSON.stringify(activeHistory.value.response, null, 2)
 })
 
-const resolveBotName = (botId) => botOptions.value.find(item => item.value === botId)?.label || '未知机器人'
+const resolveBotName = (botId) =>
+    botOptions.value.find(item => item.value === botId)?.label || '未知机器人'
 
 const resolveStatusType = (status) => statusTypeMap[status] ?? 'info'
 const resolveStatusLabel = (status) => statusLabelMap[status] ?? (status || '未知状态')
 
+// 北京时间格式化
+const formatBeijingTime = (time) => {
+    if (!time) return '-'
+    const date = new Date(time)
+    date.setHours(date.getHours() + 8)
+
+    const pad = (n) => String(n).padStart(2, '0')
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+        + `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+// 响应耗时计算
+const calcResponseDuration = (requestTime, responseTime) => {
+    if (!requestTime || !responseTime) return '-'
+
+    const start = new Date(requestTime).getTime()
+    const end = new Date(responseTime).getTime()
+    const diff = end - start
+
+    if (diff < 0) return '-'
+    if (diff < 1000) return `${diff} ms`
+
+    return `${(diff / 1000).toFixed(2)} s`
+}
+
 onMounted(() => {
     fetchData()
-    refreshTimer.value = setInterval(fetchData, 10000)
+    timer.value = setInterval(fetchData, 500)
 })
 
 onBeforeUnmount(() => {
-    if (refreshTimer.value) {
-        clearInterval(refreshTimer.value)
-        refreshTimer.value = null
-    }
+    // 切换页面时销毁定时器，防止内存泄漏
+    clearInterval(timer)
 })
+
 </script>
 
 <template>
@@ -160,20 +188,32 @@ onBeforeUnmount(() => {
                 </template>
 
                 <!-- 记录表格 -->
-                <el-table :data="requestData" border style="width: 100%">
+                <el-table :data="requestData" border style="width: 100%" table-layout="auto">
                     <el-table-column label="模型" prop="model"/>
+
                     <el-table-column label="机器人" prop="bot">
                         <template #default="{ row }">
                             <div class="option-row">
-                                <span>{{ resolveBotName(row.bot) }}</span>
-                                <el-tag size="small">
-                                    {{ row.bot }}
-                                </el-tag>
+                                <span class="data-inline">{{ resolveBotName(row.bot) }}</span>
+                                <el-tag size="small">{{ row.bot }}</el-tag>
                             </div>
                         </template>
                     </el-table-column>
-                    <el-table-column label="请求时间" prop="requestTime"/>
-                    <el-table-column label="响应时间" prop="responseTime"/>
+
+                    <!-- 请求时间 -->
+                    <el-table-column label="请求时间">
+                        <template #default="{ row }">
+                            {{ formatBeijingTime(row.requestTime) }}
+                        </template>
+                    </el-table-column>
+
+                    <!-- 响应时间 -->
+                    <el-table-column label="响应时间">
+                        <template #default="{ row }">
+                            <span class="data-inline">{{ calcResponseDuration(row.requestTime, row.responseTime) }}</span>
+                        </template>
+                    </el-table-column>
+
                     <el-table-column label="状态" prop="status">
                         <template #default="{ row }">
                             <el-tag :type="resolveStatusType(row.status)" size="small">
@@ -181,17 +221,17 @@ onBeforeUnmount(() => {
                             </el-tag>
                         </template>
                     </el-table-column>
+
                     <el-table-column label="Token" prop="token"/>
+
                     <el-table-column label="请求/响应" width="120">
                         <template #default="{ row }">
                             <el-button link type="primary" @click="openDetail(row)">详情</el-button>
                         </template>
                     </el-table-column>
                 </el-table>
-
             </el-card>
 
-            <!-- 分页按钮 -->
             <div class="pagination-block">
                 <span class="total-text">共 {{ total }} 条记录</span>
                 <el-pagination
@@ -222,8 +262,6 @@ onBeforeUnmount(() => {
                     </el-card>
                 </div>
             </el-dialog>
-
-
         </div>
     </el-scrollbar>
 </template>
@@ -328,9 +366,13 @@ onBeforeUnmount(() => {
 .option-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
 }
 
+.data-inline {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 </style>
