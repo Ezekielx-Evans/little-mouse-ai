@@ -1,7 +1,6 @@
 {
   "port": 3000,
   "allowIp": "0.0.0.0",
-  "password": "MYQ888OTEN",
-  "passwordIntervalMinutes": "30",
-  "lastVerifiedAt": "2025-12-24T07:06:15.904Z"
+  "password": "123456",
+  "passwordIntervalMinutes": "30"
 }
