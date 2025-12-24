@@ -1,12 +1,13 @@
 <script setup>
-import {ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
+import {getRequestHistoryList} from '@/api/requestApi.js'
 
 const requestInfo = ref([
-    {label: '总请求', value: '29', color: '#409EFF'},
+    {label: '总请求', value: '0', color: '#409EFF'},
     {label: '请求中', value: '0', color: '#E6A23C'},
-    {label: '成功', value: '28', color: '#67C23A'},
-    {label: '失败', value: '1', color: '#F56C6C'},
-    {label: 'Token', value: '28829', color: '#909399'},
+    {label: '成功', value: '0', color: '#67C23A'},
+    {label: '失败', value: '0', color: '#F56C6C'},
+    {label: 'Token', value: '0', color: '#909399'},
 ])
 
 // 表格数据（后端接口获取）
@@ -19,6 +20,8 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 // 记录总数
 const total = ref(0)
+const detailVisible = ref(false)
+const activeHistory = ref(null)
 
 // 分页方法（调用后端接口）
 // page-size 改变时触发
@@ -34,13 +37,44 @@ const handleCurrentChange = (val) => {
 
 // 请求后端数据
 const fetchData = async () => {
-// 这里调用你的后端接口，例如 axios
-// const res = await axios.get('/api/requests', {
-//   params: { page: currentPage.value, size: pageSize.value }
-// })
-// requestData.value = res.data.records
-// total.value = res.data.total
+    const res = await getRequestHistoryList({
+        page: currentPage.value,
+        size: pageSize.value
+    })
+
+    if (!res?.success) return
+
+    requestData.value = res.data.records || []
+    total.value = res.data.total || 0
+
+    const stats = res.data.stats || {}
+    requestInfo.value = [
+        {label: '总请求', value: String(stats.total ?? 0), color: '#409EFF'},
+        {label: '请求中', value: String(stats.pending ?? 0), color: '#E6A23C'},
+        {label: '成功', value: String(stats.success ?? 0), color: '#67C23A'},
+        {label: '失败', value: String(stats.error ?? 0), color: '#F56C6C'},
+        {label: 'Token', value: String(stats.tokens ?? 0), color: '#909399'},
+    ]
 }
+
+const openDetail = (row) => {
+    activeHistory.value = row
+    detailVisible.value = true
+}
+
+const formattedRequest = computed(() => {
+    if (!activeHistory.value?.request) return '暂无请求数据'
+    return JSON.stringify(activeHistory.value.request, null, 2)
+})
+
+const formattedResponse = computed(() => {
+    if (!activeHistory.value?.response) return '暂无响应数据'
+    return JSON.stringify(activeHistory.value.response, null, 2)
+})
+
+onMounted(() => {
+    fetchData()
+})
 </script>
 
 <template>
@@ -95,24 +129,46 @@ const fetchData = async () => {
                     <el-table-column label="响应时间" prop="responseTime"/>
                     <el-table-column label="状态" prop="status"/>
                     <el-table-column label="Token" prop="token"/>
+                    <el-table-column label="请求/响应" width="120">
+                        <template #default="{ row }">
+                            <el-button link type="primary" @click="openDetail(row)">详情</el-button>
+                        </template>
+                    </el-table-column>
                 </el-table>
 
             </el-card>
 
             <!-- 分页按钮 -->
             <div class="pagination-block">
-                <span class="total-text">共 {{ 400 }} 条记录</span>
+                <span class="total-text">共 {{ total }} 条记录</span>
                 <el-pagination
                     v-model:current-page="currentPage"
                     v-model:page-size="pageSize"
                     :page-sizes="[10, 20, 50, 100]"
-                    :total="400"
+                    :total="total"
                     background
                     layout="sizes, prev, pager, next"
                     @size-change="handleSizeChange"
                     @current-change="handleCurrentChange"
                 />
             </div>
+
+            <el-dialog v-model="detailVisible" title="请求/响应详情" width="70%">
+                <div class="detail-content">
+                    <el-card class="detail-card">
+                        <template #header>
+                            <div class="detail-header">Request</div>
+                        </template>
+                        <pre class="detail-pre">{{ formattedRequest }}</pre>
+                    </el-card>
+                    <el-card class="detail-card">
+                        <template #header>
+                            <div class="detail-header">Response</div>
+                        </template>
+                        <pre class="detail-pre">{{ formattedResponse }}</pre>
+                    </el-card>
+                </div>
+            </el-dialog>
 
 
         </div>
@@ -190,6 +246,30 @@ const fetchData = async () => {
     color: #606266;
     font-size: 14px;
     white-space: nowrap;
+}
+
+.detail-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.detail-card {
+    --el-card-border-radius: 16px;
+    background: #fafafa;
+}
+
+.detail-header {
+    font-weight: 600;
+    color: #303133;
+}
+
+.detail-pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 13px;
+    color: #606266;
 }
 
 
